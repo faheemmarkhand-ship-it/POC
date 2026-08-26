@@ -4883,3 +4883,98 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
         -webkit-line-clamp: 1 !important;
     }
 }
+
+/* ===================================================================
+   MOBILE POS — FULL REWRITE
+   Products take the full screen as a scrollable list.
+   Cart is a slide-up bottom sheet, opened via a floating button.
+   No shrinking, no wasted space, easy to scroll and tap.
+   =================================================================== */
+@media (max-width: 768px) {
+    /* The POS layout: just a vertical stack, no side-by-side */
+    .pos-layout {
+        display: block !important;
+        flex-direction: column !important;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        padding: 0 !important;
+        gap: 0 !important;
+    }
+
+    /* Products section: full viewport height below header+nav, scrollable */
+    .products-section {
+        flex: none !important;
+        height: calc(100vh - var(--header-height) - var(--nav-height)) !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch;
+        background: var(--gray-50) !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        padding: 8px 10px 90px 10px !important;  /* bottom padding for floating cart btn */
+        margin: 0 !important;
+        display: block !important;
+    }
+
+    /* Cart sidebar: fixed bottom sheet, full width, slides up */
+    .cart-sidebar {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: 80vh !important;
+        border-radius: 16px 16px 0 0 !important;
+        box-shadow: 0 -4px 20px rgba(0,0,0,0.2) !important;
+        transform: translateY(100%) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        z-index: 80 !important;
+        background: white !important;
+    }
+    .cart-sidebar.active,
+    .pos-layout.sidebar-open .cart-sidebar {
+        transform: translateY(0) !important;
+    }
+
+    /* Cart backdrop when open */
+    .cart-backdrop {
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(0,0,0,0.5) !important;
+        z-index: 70 !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.3s ease !important;
+    }
+    .cart-backdrop.active {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    /* Floating cart button (visible when cart closed + has items) */
+    .floating-cart-btn {
+        position: fixed !important;
+        bottom: 16px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 75 !important;
+        background: var(--success-green) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 28px !important;
+        padding: 12px 24px !important;
+        font-size: 0.9rem !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 16px rgba(16,185,129,0.5) !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        max-width: 90% !important;
+    }
+}
+

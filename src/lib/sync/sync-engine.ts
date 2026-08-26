@@ -70,7 +70,7 @@ async function checkBackendReachable(): Promise<boolean> {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 4000);
     await api.get("/api/health");
-    clearTimeout(ctl);
+    clearTimeout(t);
     return true;
   } catch {
     return false;

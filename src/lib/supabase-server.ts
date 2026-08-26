@@ -12,7 +12,7 @@ const SUPABASE_KEY =
   "";
 
 // Cache the client across hot-reloads in dev
-let _client: ReturnType<typeof createClient> | null = null;
+let _client: any = null;
 
 export function getSupabase() {
   if (_client) return _client;
@@ -28,11 +28,14 @@ export function getSupabase() {
 export const BUSINESS_SHIFT_MS = 9 * 60 * 60 * 1000;
 export const nowMs = () => Date.now();
 
-// ---------- Helpers (mirror the Python backend's supabase_client.py) ----------
+// ---------- Helpers ----------
 
-export async function sbSelectAll(table: string, opts?: { filters?: Record<string, unknown>; order?: string; limit?: number }) {
+// Use `any` for all Supabase interactions — the JS client's generic types are
+// extremely strict and interfere with dynamic table/column access.
+
+export async function sbSelectAll(table: string, opts?: { filters?: Record<string, any>; order?: string; limit?: number }): Promise<any[]> {
   const sb = getSupabase();
-  let q = sb.from(table).select("*");
+  let q: any = sb.from(table).select("*");
   if (opts?.filters) {
     for (const [col, val] of Object.entries(opts.filters)) {
       if (val !== undefined && val !== null) q = q.eq(col, val);
@@ -47,35 +50,35 @@ export async function sbSelectAll(table: string, opts?: { filters?: Record<strin
   return r.data ?? [];
 }
 
-export async function sbSelectById(table: string, idCol: string, idVal: unknown) {
+export async function sbSelectById(table: string, idCol: string, idVal: any): Promise<any | null> {
   const sb = getSupabase();
   const r = await sb.from(table).select("*").eq(idCol, idVal).limit(1);
   return r.data?.[0] ?? null;
 }
 
-export async function sbInsert(table: string, row: Record<string, unknown>) {
+export async function sbInsert(table: string, row: any): Promise<any | null> {
   const sb = getSupabase();
   const r = await sb.from(table).insert(row);
   return r.data?.[0] ?? null;
 }
 
-export async function sbUpsert(table: string, rows: Record<string, unknown> | Record<string, unknown>[], onConflict?: string) {
+export async function sbUpsert(table: string, rows: any, onConflict?: string): Promise<any[]> {
   const sb = getSupabase();
-  const r = await sb.from(table).upsert(rows as any, onConflict ? { onConflict } : undefined);
+  const r = await sb.from(table).upsert(rows, onConflict ? { onConflict } : undefined);
   return r.data ?? [];
 }
 
-export async function sbUpdate(table: string, idCol: string, idVal: unknown, updates: Record<string, unknown>) {
+export async function sbUpdate(table: string, idCol: string, idVal: any, updates: any): Promise<any | null> {
   const sb = getSupabase();
   const r = await sb.from(table).update(updates).eq(idCol, idVal);
   return r.data?.[0] ?? null;
 }
 
-export async function sbSoftDelete(table: string, idCol: string, idVal: unknown, updatedAt: number) {
+export async function sbSoftDelete(table: string, idCol: string, idVal: any, updatedAt: number): Promise<any | null> {
   return sbUpdate(table, idCol, idVal, { deleted_at: updatedAt, updated_at: updatedAt });
 }
 
-export async function sbCount(table: string) {
+export async function sbCount(table: string): Promise<number> {
   const sb = getSupabase();
   const r = await sb.from(table).select("*", { count: "exact", head: true });
   return r.count ?? 0;

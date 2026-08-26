@@ -106,8 +106,7 @@ export function PosTab() {
       items: [...cart],
       total,
       status: "completed",
-      subtotal: total,
-    });
+    } as any);
     setReceiptModalOpen(true);
   };
 
