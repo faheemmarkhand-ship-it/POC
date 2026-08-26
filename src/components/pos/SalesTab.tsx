@@ -88,16 +88,18 @@ export function SalesTab() {
   // Filtered orders for the table
   const filteredOrders = useMemo(() => {
     let list = orders.filter((o) => o.status === activeSalesStatus);
+    // Always apply month/date filters (even when searching) so results stay within
+    // the selected period. Previously, searching skipped these filters and showed
+    // ALL orders across history — which made "D" (in "ORD") match everything.
+    if (activeMonth) {
+      list = list.filter((o) => businessMonthOf(o.timestamp) === activeMonth);
+    }
+    if (dateFilter) {
+      list = list.filter((o) => businessDateOf(o.timestamp) === dateFilter);
+    }
     if (searchTerm) {
       const t = searchTerm.trim().toLowerCase();
       list = list.filter((o) => formatOrderId(o.id).toLowerCase().includes(t));
-    } else {
-      if (activeMonth) {
-        list = list.filter((o) => businessMonthOf(o.timestamp) === activeMonth);
-      }
-      if (dateFilter) {
-        list = list.filter((o) => businessDateOf(o.timestamp) === dateFilter);
-      }
     }
     return [...list].sort((a, b) => b.timestamp - a.timestamp);
   }, [orders, activeSalesStatus, activeMonth, dateFilter, searchTerm]);
