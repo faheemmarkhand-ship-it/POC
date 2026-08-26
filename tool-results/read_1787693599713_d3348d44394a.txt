@@ -1,0 +1,1153 @@
+     1→
+     2→import { DataService } from './modules/data-service.js';
+     3→import { UIRenderer } from './modules/ui-renderer.js';
+     4→
+     5→class POSSystem {
+     6→    constructor() {
+     7→        this.dataService = new DataService(this);
+     8→        this.ui = new UIRenderer(this);
+     9→
+    10→        this.cart = [];
+    11→        this.activeMonth = this.getCurrentMonth();
+    12→
+    13→        // Initialize App
+    14→        this.init();
+    15→    }
+    16→
+    17→    // Proxy for UI helpers
+    18→    get data() { return this.dataService.data; }
+    19→
+    20→    getCurrentMonth() {
+    21→        const now = new Date();
+    22→        const year = now.getFullYear();
+    23→        const month = String(now.getMonth() + 1).padStart(2, '0');
+    24→        return `${year}-${month}`;
+    25→    }
+    26→
+    27→    async init() {
+    28→        // Load HTML Components first
+    29→        await this.loadComponents();
+    30→
+    31→        this.bindGlobalEvents();
+    32→
+    33→        // Initialize Google Drive Service
+    34→        if (this.dataService.driveService) {
+    35→            this.dataService.driveService.initialize().then(() => {
+    36→                this.updateGoogleDriveUI();
+    37→            });
+    38→        }
+    39→
+    40→        // Initialize Internet Status Monitoring
+    41→        this.initConnectivityMonitoring();
+    42→
+    43→        const modal = document.getElementById('dbSetupModal');
+    44→        if (modal) modal.classList.add('active');
+    45→    }
+    46→
+    47→    initConnectivityMonitoring() {
+    48→        const updateStatus = async () => {
+    49→            const el = document.getElementById('internetStatus');
+    50→            if (!el) return;
+    51→
+    52→            // First check navigator.onLine for a quick hint
+    53→            let isOnline = navigator.onLine;
+    54→
+    55→            // If it says online, double check with a real fetch
+    56→            if (isOnline) {
+    57→                try {
+    58→                    // Try to fetch a small resource to confirm actual internet access
+    59→                    // Using no-cors and a cache-busting timestamp
+    60→                    await fetch('https://www.google.com/favicon.ico?' + Date.now(), {
+    61→                        mode: 'no-cors',
+    62→                        method: 'HEAD',
+    63→                        cache: 'no-store'
+    64→                    });
+    65→                    isOnline = true;
+    66→                } catch (e) {
+    67→                    // If fetch fails, we are likely offline or internet is blocked
+    68→                    isOnline = false;
+    69→                }
+    70→            }
+    71→
+    72→            el.className = `gdrive-status ${isOnline ? 'connected' : 'error'}`;
+    73→            el.innerHTML = `
+    74→                <i class="fas fa-circle"></i>
+    75→                <span>Internet: ${isOnline ? 'Online' : 'Offline'}</span>
+    76→            `;
+    77→        };
+    78→
+    79→        window.addEventListener('online', updateStatus);
+    80→        window.addEventListener('offline', updateStatus);
+    81→
+    82→        // Initial check
+    83→        updateStatus();
+    84→
+    85→        // Periodic check every 15 seconds to catch ISP drops or router issues
+    86→        setInterval(updateStatus, 15000);
+    87→    }
+    88→
+    89→    async loadComponents() {
+    90→        const load = async (id, file) => {
+    91→            const el = document.getElementById(id);
+    92→            if (el) {
+    93→                try {
+    94→                    const res = await fetch(file);
+    95→                    if (res.ok) el.innerHTML = await res.text();
+    96→                } catch (e) { console.error(`Failed to load ${file}`, e); }
+    97→            }
+    98→        };
+    99→
+   100→        // Load all pages and modals
+   101→        await Promise.all([
+   102→            load('pos-tab', 'pages/pos.html'),
+   103→            load('sales-tab', 'pages/sales.html'),
+   104→            load('menu-tab', 'pages/menu.html'),
+   105→            load('settings-tab', 'pages/settings.html'),
+   106→            // Modals are appended to body
+   107→            fetch('pages/modals.html').then(async res => {
+   108→                if (res.ok) {
+   109→                    const html = await res.text();
+   110→                    document.body.insertAdjacentHTML('beforeend', html);
+   111→                }
+   112→            }).catch(e => console.error(e))
+   113→        ]);
+   114→    }
+   115→
+   116→    bindGlobalEvents() {
+   117→        // --- Database Setup ---
+   118→        const openDbBtn = document.getElementById('openDbBtn');
+   119→        if (openDbBtn) {
+   120→            openDbBtn.addEventListener('click', async () => {
+   121→                const loadingMsg = document.getElementById('dbLoadingMsg');
+   122→                if (loadingMsg) loadingMsg.style.display = 'block';
+   123→
+   124→                const success = await this.dataService.initializeDatabase();
+   125→
+   126→                if (success) {
+   127→                    await this.dataService.loadData();
+   128→
+   129→                    // Post-load initialization
+   130→                    this.populateSettingsUI();
+   131→
+   132→                    document.getElementById('dbSetupModal').classList.remove('active');
+   133→                    this.ui.renderPOS();
+   134→                    this.showToast('System Ready', 'success');
+   135→                } else {
+   136→                    if (loadingMsg) loadingMsg.style.display = 'none';
+   137→                }
+   138→            });
+   139→        }
+   140→
+   141→        // --- Navigation ---
+   142→        document.querySelectorAll('.nav-tab').forEach(tab => {
+   143→            tab.addEventListener('click', (e) => this.switchTab(e.currentTarget.dataset.tab));
+   144→        });
+   145→
+   146→        // --- Core Actions ---
+   147→        const bind = (id, handler) => {
+   148→            const el = document.getElementById(id);
+   149→            if (el) el.addEventListener('click', handler);
+   150→        };
+   151→
+   152→        bind('checkoutBtn', () => this.checkout());
+   153→
+   154→        // Cart Sidebar Toggle
+   155→        bind('closeSidebarBtn', () => {
+   156→            const sidebar = document.getElementById('cartSidebar');
+   157→            const layout = document.querySelector('.pos-layout');
+   158→            if (sidebar) sidebar.classList.remove('active');
+   159→            if (layout) layout.classList.remove('sidebar-open');
+   160→        });
+   161→
+   162→        bind('clearCartBtn', () => {
+   163→            this.showConfirmModal(
+   164→                'Clear all items from cart?',
+   165→                () => {
+   166→                    this.cart = [];
+   167→                    this.ui.renderCart();
+   168→                    this.showToast('Cart cleared');
+   169→                }
+   170→            );
+   171→        });
+   172→
+   173→        // Product Modal
+   174→        bind('addProductBtn', () => this.ui.openProductModal());
+   175→        bind('closeProductModal', () => this.ui.closeProductModal());
+   176→        bind('cancelProduct', () => this.ui.closeProductModal());
+   177→
+   178→        const prodForm = document.getElementById('productForm');
+   179→        if (prodForm) prodForm.addEventListener('submit', (e) => this.saveProduct(e));
+   180→
+   181→        // Category Management
+   182→        bind('addCategoryBtn', () => this.addCategory());
+   183→
+   184→        const catForm = document.getElementById('categoryForm');
+   185→        if (catForm) catForm.addEventListener('submit', (e) => this.saveCategoryEdit(e));
+   186→        bind('closeCategoryModal', () => document.getElementById('categoryModal').classList.remove('active'));
+   187→        bind('cancelCategory', () => document.getElementById('categoryModal').classList.remove('active'));
+   188→
+   189→        // Settings
+   190→        bind('saveStoreInfo', async () => {
+   191→            const info = {
+   192→                name: document.getElementById('storeName').value,
+   193→                address: document.getElementById('storeAddress').value,
+   194→                phone: document.getElementById('storePhone').value,
+   195→                email: document.getElementById('storeEmail').value
+   196→            };
+   197→            await this.dataService.updateStoreInfo(info);
+   198→            this.showToast('Store Info Saved');
+   199→        });
+   200→
+   201→        bind('saveReceiptSettings', async () => {
+   202→            const settings = {
+   203→                receiptHeader: document.getElementById('receiptHeader').value,
+   204→                receiptFooter: document.getElementById('receiptFooter').value
+   205→            };
+   206→            await this.dataService.updateStoreInfo(settings);
+   207→            this.showToast('Receipt Settings Saved');
+   208→        });
+   209→
+   210→
+   211→        // Sales Filters
+   212→        const monthFilter = document.getElementById('activeMonthFilter');
+   213→        const dateFilter = document.getElementById('dateWithinMonthFilter');
+   214→
+   215→        if (monthFilter) {
+   216→            monthFilter.value = this.activeMonth;
+   217→            monthFilter.addEventListener('change', (e) => {
+   218→                this.activeMonth = e.target.value;
+   219→                // Clear date filter when switching months to make filters "independent"
+   220→                if (dateFilter) dateFilter.value = '';
+   221→                this.ui.renderSales();
+   222→            });
+   223→        }
+   224→
+   225→        bind('prevMonthBtn', () => {
+   226→            const [y, m] = this.activeMonth.split('-').map(Number);
+   227→            const prev = new Date(y, m - 2, 1);
+   228→            this.activeMonth = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
+   229→            if (monthFilter) monthFilter.value = this.activeMonth;
+   230→            // Clear date filter when switching months
+   231→            if (dateFilter) dateFilter.value = '';
+   232→            this.ui.renderSales();
+   233→        });
+   234→
+   235→        bind('nextMonthBtn', () => {
+   236→            const [y, m] = this.activeMonth.split('-').map(Number);
+   237→            const next = new Date(y, m, 1);
+   238→            this.activeMonth = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
+   239→            if (monthFilter) monthFilter.value = this.activeMonth;
+   240→            // Clear date filter when switching months
+   241→            if (dateFilter) dateFilter.value = '';
+   242→            this.ui.renderSales();
+   243→        });
+   244→
+   245→        if (dateFilter) {
+   246→            dateFilter.addEventListener('change', (e) => {
+   247→                const val = e.target.value;
+   248→                if (val) {
+   249→                    // Sync month filter to match the selected date
+   250→                    const month = val.substring(0, 7); // YYYY-MM
+   251→                    this.activeMonth = month;
+   252→                    if (monthFilter) monthFilter.value = month;
+   253→                }
+   254→                this.ui.renderSales();
+   255→            });
+   256→        }
+   257→
+   258→        bind('prevDateBtn', () => {
+   259→            if (!dateFilter || !dateFilter.value) return;
+   260→            const parts = dateFilter.value.split('-').map(Number);
+   261→            const d = new Date(parts[0], parts[1] - 1, parts[2]);
+   262→            d.setDate(d.getDate() - 1);
+   263→
+   264→            const newVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+   265→            dateFilter.value = newVal;
+   266→
+   267→            // Sync month filter
+   268→            const month = newVal.substring(0, 7);
+   269→            this.activeMonth = month;
+   270→            if (monthFilter) monthFilter.value = month;
+   271→
+   272→            this.ui.renderSales();
+   273→        });
+   274→
+   275→        bind('nextDateBtn', () => {
+   276→            if (!dateFilter || !dateFilter.value) return;
+   277→            const parts = dateFilter.value.split('-').map(Number);
+   278→            const d = new Date(parts[0], parts[1] - 1, parts[2]);
+   279→            d.setDate(d.getDate() + 1);
+   280→
+   281→            const newVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+   282→            dateFilter.value = newVal;
+   283→
+   284→            // Sync month filter
+   285→            const month = newVal.substring(0, 7);
+   286→            this.activeMonth = month;
+   287→            if (monthFilter) monthFilter.value = month;
+   288→
+   289→            this.ui.renderSales();
+   290→        });
+   291→
+   292→        bind('clearDateFilter', () => {
+   293→            if (dateFilter) {
+   294→                dateFilter.value = '';
+   295→                this.ui.renderSales();
+   296→            }
+   297→        });
+   298→
+   299→
+   300→        // Color Picker Previews
+   301→        const setupColorPreview = (pickerId, displayId) => {
+   302→            const picker = document.getElementById(pickerId);
+   303→            const display = document.getElementById(displayId);
+   304→            if (picker && display) {
+   305→                // Initialize
+   306→                display.style.backgroundColor = picker.value;
+   307→                // Bind change
+   308→                picker.addEventListener('input', (e) => {
+   309→                    display.style.backgroundColor = e.target.value;
+   310→                });
+   311→            }
+   312→        };
+   313→
+   314→        setupColorPreview('categoryColor', 'colorDisplay');
+   315→        setupColorPreview('editCategoryColor', 'editColorDisplay');
+   316→
+   317→        // --- Category Emoji Picker Logic ---
+   318→        this.initEmojiPicker('addCategoryEmojiPicker', 'categoryEmoji');
+   319→        this.initEmojiPicker('editCategoryEmojiPicker', 'editCategoryEmoji');
+   320→
+   321→        // Window Controls
+   322→        bind('closeBtn', () => {
+   323→            this.showConfirmModal(
+   324→                'Are you sure you want to close the POS system?',
+   325→                () => window.close()
+   326→            );
+   327→        });
+   328→
+   329→        // --- Google Drive Backup ---
+   330→        bind('connectGoogleDriveBtn', () => {
+   331→            this.dataService.driveService.authenticate();
+   332→        });
+   333→
+   334→        bind('googleSignInBtn', () => {
+   335→            this.dataService.driveService.authenticate();
+   336→        });
+   337→
+   338→        bind('closeGoogleDriveModal', () => {
+   339→            document.getElementById('googleDriveModal').classList.remove('active');
+   340→        });
+   341→
+   342→        bind('manualBackupBtn', async () => {
+   343→            if (!this.dataService.db) return;
+   344→            const data = this.dataService.db.export();
+   345→            const blob = new Blob([data], { type: 'application/x-sqlite3' });
+   346→            this.showToast('Starting manual backup...');
+   347→            const success = await this.dataService.driveService.backupNow(blob);
+   348→            if (success) {
+   349→                this.showToast('Manual backup completed', 'success');
+   350→            }
+   351→        });
+   352→
+   353→        bind('disconnectGoogleDriveBtn', () => {
+   354→            this.showConfirmModal(
+   355→                'Disconnect Google Drive and stop automatic backups?',
+   356→                async () => {
+   357→                    await this.dataService.driveService.disconnect();
+   358→                    this.updateGoogleDriveUI();
+   359→                    this.showToast('Google Drive disconnected');
+   360→                }
+   361→            );
+   362→        });
+   363→
+   364→        // Setup status listener
+   365→        this.dataService.driveService.onStatusChange = (type, message) => {
+   366→            if (type === 'success' || type === 'error') {
+   367→                this.showToast(message, type);
+   368→            }
+   369→            this.updateGoogleDriveUI();
+   370→
+   371→            // Update modal message if visible
+   372→            const msgEl = document.getElementById('gDriveStatusMessage');
+   373→            if (msgEl) {
+   374→                msgEl.textContent = message;
+   375→                msgEl.className = `gdrive-${type}-text`;
+   376→            }
+   377→        };
+   378→
+   379→        // Initial UI Update
+   380→        this.updateGoogleDriveUI();
+   381→    }
+   382→
+   383→    populateSettingsUI() {
+   384→        const s = this.data.store;
+   385→        if (s) {
+   386→            if (document.getElementById('storeName')) document.getElementById('storeName').value = s.name || '';
+   387→            if (document.getElementById('storeAddress')) document.getElementById('storeAddress').value = s.address || '';
+   388→            if (document.getElementById('storePhone')) document.getElementById('storePhone').value = s.phone || '';
+   389→            if (document.getElementById('storeEmail')) document.getElementById('storeEmail').value = s.email || '';
+   390→            if (document.getElementById('receiptHeader')) document.getElementById('receiptHeader').value = s.receiptHeader || '';
+   391→            if (document.getElementById('receiptFooter')) document.getElementById('receiptFooter').value = s.receiptFooter || '';
+   392→        }
+   393→        this.ui.renderCategoriesList(); // Ensure settings list is populated
+   394→        this.updateGoogleDriveUI(); // Sync Google Drive state
+   395→    }
+   396→
+   397→    updateGoogleDriveUI() {
+   398→        const service = this.dataService.driveService;
+   399→        if (!service) return;
+   400→
+   401→        const status = service.getStatus();
+   402→        const connected = status.connected;
+   403→
+   404→        // Toggle buttons visibility
+   405→        const connectBtn = document.getElementById('connectGoogleDriveBtn');
+   406→        const disconnectBtn = document.getElementById('disconnectGoogleDriveBtn');
+   407→        const manualBtn = document.getElementById('manualBackupBtn');
+   408→        const userInfo = document.getElementById('gdriveUserInfo');
+   409→        const statusContainer = document.getElementById('gdriveConnectionStatus');
+   410→
+   411→        if (connectBtn) connectBtn.style.display = connected ? 'none' : 'inline-flex';
+   412→        if (disconnectBtn) disconnectBtn.style.display = connected ? 'inline-flex' : 'none';
+   413→        if (manualBtn) manualBtn.style.display = connected ? 'inline-flex' : 'none';
+   414→        if (userInfo) userInfo.style.display = connected ? 'block' : 'none';
+   415→
+   416→        // Update status badge
+   417→        if (statusContainer) {
+   418→            let statusText = connected ? 'Connected' : 'Not Connected';
+   419→            let statusClass = connected ? 'connected' : 'disconnected';
+   420→
+   421→            if (status.uploading) {
+   422→                statusText = 'Uploading...';
+   423→                statusClass = 'uploading';
+   424→            }
+   425→
+   426→            statusContainer.innerHTML = `
+   427→                <div class="gdrive-status ${statusClass}">
+   428→                    <i class="fas fa-circle"></i>
+   429→                    <span>${statusText}</span>
+   430→                </div>
+   431→            `;
+   432→        }
+   433→
+   434→        // Update last backup time
+   435→        const lastBackupEl = document.getElementById('gdriveLastBackup');
+   436→        if (lastBackupEl) {
+   437→            if (status.lastBackup) {
+   438→                const date = new Date(status.lastBackup);
+   439→                lastBackupEl.textContent = `Last backup: ${date.toLocaleString()}`;
+   440→            } else {
+   441→                lastBackupEl.textContent = 'Last backup: Never';
+   442→            }
+   443→        }
+   444→    }
+   445→
+   446→    showToast(msg, type) { this.ui.showToast(msg, type); }
+   447→
+   448→    switchTab(tabName) {
+   449→        document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+   450→        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+   451→
+   452→        const tab = document.querySelector(`[data-tab="${tabName}"]`);
+   453→        // Handle ID variations ID='pos-tab' vs ID='posSection'
+   454→        let content = document.getElementById(`${tabName}-tab`);
+   455→        if (!content) content = document.getElementById(`${tabName}Section`);
+   456→
+   457→        if (tab) tab.classList.add('active');
+   458→        if (content) content.classList.add('active');
+   459→
+   460→        if (tabName === 'pos') this.ui.renderPOS();
+   461→        if (tabName === 'menu') this.renderMenuManagement();
+   462→        if (tabName === 'sales') {
+   463→            this.activeSalesStatus = 'completed';
+   464→            this.ui.resetSalesFilters();
+   465→            this.ui.renderSales();
+   466→        }
+   467→    }
+   468→
+   469→    toggleFullscreen() {
+   470→        // Kept for internal use if needed, but UI binding removed as per user request
+   471→        if (!document.fullscreenElement) {
+   472→            document.documentElement.requestFullscreen().catch(() => { });
+   473→        } else {
+   474→            if (document.exitFullscreen) document.exitFullscreen();
+   475→        }
+   476→    }
+   477→
+   478→    async reprintOrder(orderId) {
+   479→        const order = this.data.orders.find(o => String(o.id) === String(orderId));
+   480→        if (order) {
+   481→            this.pendingOrder = order;
+   482→            this.ui.showReceipt(order);
+   483→            this.showToast('Reprinting order...');
+   484→        }
+   485→    }
+   486→
+   487→    async returnOrder(orderId) {
+   488→        this.showConfirmModal(
+   489→            'Are you sure you want to mark this order as RETURNED?',
+   490→            async () => {
+   491→                await this.dataService.updateOrderStatus(orderId, 'returned');
+   492→                this.ui.renderSales();
+   493→                this.showToast('Order marked as Returned');
+   494→            }
+   495→        );
+   496→    }
+   497→
+   498→    async deleteOrderPermanently(orderId) {
+   499→        this.showConfirmModal(
+   500→            'Are you sure you want to mark this order as DELETED? (Move to deleted tab)',
+   501→            async () => {
+   502→                await this.dataService.updateOrderStatus(orderId, 'deleted');
+   503→                this.ui.renderSales();
+   504→                this.showToast('Order moved to Deleted');
+   505→            }
+   506→        );
+   507→    }
+   508→
+   509→    filterSalesByStatus(status) {
+   510→        this.activeSalesStatus = status;
+   511→        // Update tab styling
+   512→        document.querySelectorAll('.sales-subtab').forEach(tab => {
+   513→            tab.classList.toggle('active', tab.getAttribute('data-status') === status);
+   514→        });
+   515→        this.ui.renderSales();
+   516→    }
+   517→
+   518→    // --- Cart Actions ---
+   519→    addCustomKgItem() {
+   520→        const categoryId = document.getElementById('manualKgCategory').value;
+   521→        const price = parseFloat(document.getElementById('manualKgPrice').value);
+   522→
+   523→        if (!categoryId || !price) {
+   524→            this.showToast('Please select category and enter price', 'error');
+   525→            return;
+   526→        }
+   527→
+   528→        const category = this.data.categories.find(c => c.id == categoryId);
+   529→        const product = {
+   530→            id: `custom_${Date.now()}`,
+   531→            name: `${category ? category.name : 'Custom'}`,
+   532→            price: price,
+   533→            isCustom: true,
+   534→            categoryId: categoryId
+   535→        };
+   536→
+   537→        this.addToCart(product);
+   538→
+   539→        // Reset inputs
+   540→        document.getElementById('manualKgPrice').value = '';
+   541→    }
+   542→
+   543→    addToCart(product) {
+   544→        const existing = this.cart.find(item => item.id === product.id);
+   545→        if (existing) {
+   546→            existing.quantity++;
+   547→            existing.total = existing.quantity * existing.price;
+   548→        } else {
+   549→            this.cart.push({
+   550→                ...product,
+   551→                quantity: 1,
+   552→                total: Number(product.price) || 0,
+   553→                name: product.name,
+   554→                price: Number(product.price) || 0
+   555→            });
+   556→        }
+   557→        this.ui.renderCart();
+   558→        this.showToast('Added to cart');
+   559→
+   560→        // Show cart sidebar
+   561→        const sidebar = document.getElementById('cartSidebar');
+   562→        const layout = document.querySelector('.pos-layout');
+   563→        if (sidebar) sidebar.classList.add('active');
+   564→        if (layout) layout.classList.add('sidebar-open');
+   565→    }
+   566→
+   567→    removeFromCart(index) {
+   568→        this.cart.splice(index, 1);
+   569→        this.ui.renderCart();
+   570→    }
+   571→
+   572→    updateCartItemQuantity(index, delta) {
+   573→        const item = this.cart[index];
+   574→        if (item) {
+   575→            item.quantity += delta;
+   576→            if (item.quantity <= 0) {
+   577→                this.cart.splice(index, 1);
+   578→            } else {
+   579→                item.total = item.quantity * item.price;
+   580→            }
+   581→            this.ui.renderCart();
+   582→        }
+   583→    }
+   584→
+   585→    // --- Product Management ---
+   586→    async saveProduct(e) {
+   587→        e.preventDefault();
+   588→        const id = this.editingProductId;
+   589→        const name = document.getElementById('productName').value;
+   590→        const categoryId = document.getElementById('productCategory').value;
+   591→
+   592→        // Find which quantity type is selected
+   593→        const qtyRadio = document.querySelector('input[name="productQuantity"]:checked');
+   594→        const qtyType = qtyRadio ? qtyRadio.value : 'pcs';
+   595→
+   596→        // Get the friendly display text from the data attribute (e.g. "1 Kg")
+   597→        let quantityType = qtyRadio ? qtyRadio.dataset.display : 'Pieces';
+   598→
+   599→        // If Custom is selected, use the manual text input
+   600→        if (qtyType === 'custom') {
+   601→            const customText = document.getElementById('customQuantityText').value;
+   602→            quantityType = customText || 'Custom';
+   603→        }
+   604→
+   605→        let price = 0;
+   606→        if (qtyType === 'pcs') {
+   607→            price = parseFloat(document.getElementById('productPrice').value) || 0;
+   608→        } else {
+   609→            price = parseFloat(document.getElementById('weightProductPrice').value) || 0;
+   610→        }
+   611→
+   612→        // --- Validation ---
+   613→        if (!name.trim()) {
+   614→            this.showToast('Please enter a product name', 'error');
+   615→            return;
+   616→        }
+   617→        if (!price || price <= 0) {
+   618→            this.showToast('Please enter a valid price for this item', 'error');
+   619→            return;
+   620→        }
+   621→
+   622→        const product = {
+   623→            name: name.trim(),
+   624→            price,
+   625→            categoryId,
+   626→            quantityType: quantityType,
+   627→            isCustom: false
+   628→        };
+   629→
+   630→        if (id) {
+   631→            await this.dataService.updateProduct({ ...product, id });
+   632→            this.showToast('Product Updated');
+   633→        } else {
+   634→            await this.dataService.addProduct(product);
+   635→            this.showToast('Product Saved');
+   636→        }
+   637→
+   638→        this.editingProductId = null;
+   639→        this.ui.closeProductModal();
+   640→        this.ui.renderPOS();
+   641→        if (document.getElementById('menu-tab').classList.contains('active')) {
+   642→            this.renderMenuManagement();
+   643→        }
+   644→    }
+   645→
+   646→    async editProduct(productId) {
+   647→        const product = this.data.products.find(p => p.id == productId);
+   648→        if (!product) return;
+   649→
+   650→        this.editingProductId = productId;
+   651→        document.getElementById('productModalTitle').textContent = 'Edit Product';
+   652→
+   653→        document.getElementById('productName').value = product.name;
+   654→        document.getElementById('productCategory').value = product.categoryId;
+   655→
+   656→        // Show fields based on product type
+   657→        this.updateCategoryRateDisplay();
+   658→
+   659→        // Try to match quantity type to radio buttons
+   660→        const radios = document.querySelectorAll('input[name="productQuantity"]');
+   661→        let matched = false;
+   662→        radios.forEach(r => {
+   663→            if (r.dataset.display === product.quantityType || r.value === product.quantityType) {
+   664→                r.checked = true;
+   665→                matched = true;
+   666→            }
+   667→        });
+   668→
+   669→        if (!matched && product.quantityType != 'Pieces') {
+   670→            const customRadio = document.querySelector('input[name="productQuantity"][value="custom"]');
+   671→            if (customRadio) {
+   672→                customRadio.checked = true;
+   673→                const customInput = document.getElementById('customQuantityInput');
+   674→                if (customInput) customInput.style.display = 'block';
+   675→                document.getElementById('customQuantityText').value = product.quantityType;
+   676→            }
+   677→        }
+   678→
+   679→        if (product.quantityType === 'Pieces' || !product.quantityType) {
+   680→            document.getElementById('productPrice').value = product.price;
+   681→        } else {
+   682→            document.getElementById('weightProductPrice').value = product.price;
+   683→        }
+   684→
+   685→        // Explicitly sync the UI visibility after setting values
+   686→        this.syncProductModalUI();
+   687→
+   688→        this.ui.openProductModal();
+   689→    }
+   690→
+   691→    updateCategoryRateDisplay() {
+   692→        const categoryId = document.getElementById('productCategory').value;
+   693→        const qtyPricesGroup = document.getElementById('quantityPricesGroup');
+   694→
+   695→        if (!categoryId) {
+   696→            if (qtyPricesGroup) qtyPricesGroup.style.display = 'none';
+   697→            document.getElementById('weightPriceGroup').style.display = 'none';
+   698→            document.getElementById('priceFieldGroup').style.display = 'none';
+   699→            return;
+   700→        }
+   701→
+   702→        if (qtyPricesGroup) qtyPricesGroup.style.display = 'block';
+   703→
+   704→        // Bind change events to radios
+   705→        const radios = document.querySelectorAll('input[name="productQuantity"]');
+   706→        radios.forEach(r => {
+   707→            r.onchange = () => this.syncProductModalUI();
+   708→        });
+   709→
+   710→        // Set default if none selected
+   711→        if (!document.querySelector('input[name="productQuantity"]:checked')) {
+   712→            const defaultRadio = document.querySelector('input[name="productQuantity"][value="pcs"]');
+   713→            if (defaultRadio) defaultRadio.checked = true;
+   714→        }
+   715→
+   716→        this.syncProductModalUI();
+   717→    }
+   718→
+   719→    // Helper for UI to trigger price field updates manually
+   720→    syncProductModalUI() {
+   721→        const weightPriceGroup = document.getElementById('weightPriceGroup');
+   722→        const priceFieldGroup = document.getElementById('priceFieldGroup');
+   723→        const customInput = document.getElementById('customQuantityInput');
+   724→
+   725→        const selectedQtyRadio = document.querySelector('input[name="productQuantity"]:checked');
+   726→        const selectedQty = selectedQtyRadio ? selectedQtyRadio.value : 'pcs';
+   727→
+   728→        if (selectedQty === 'pcs') {
+   729→            if (weightPriceGroup) weightPriceGroup.style.display = 'none';
+   730→            if (priceFieldGroup) priceFieldGroup.style.display = 'block';
+   731→        } else {
+   732→            if (weightPriceGroup) weightPriceGroup.style.display = 'block';
+   733→            if (priceFieldGroup) priceFieldGroup.style.display = 'none';
+   734→        }
+   735→
+   736→        if (customInput) {
+   737→            customInput.style.display = (selectedQty === 'custom') ? 'block' : 'none';
+   738→        }
+   739→    }
+   740→
+   741→    async addCategory() {
+   742→        const name = document.getElementById('categoryName')?.value;
+   743→        const color = document.getElementById('categoryColor')?.value || "#EF4444";
+   744→        const emoji = document.getElementById('categoryEmoji')?.value || "🍛";
+   745→
+   746→        if (!name) {
+   747→            this.showToast('Please enter a category name', 'error');
+   748→            return;
+   749→        }
+   750→
+   751→        await this.dataService.addCategory({ name, color, emoji });
+   752→        this.ui.renderCategoriesList(); // Refresh list
+   753→        this.ui.renderCategories(); // Refresh pills
+   754→        this.showToast('Category Added');
+   755→
+   756→        // Clear input
+   757→        if (document.getElementById('categoryName')) document.getElementById('categoryName').value = '';
+   758→
+   759→        // Reset picker to default
+   760→        this.syncEmojiPicker('addCategoryEmojiPicker', '🍛');
+   761→        const emojiInput = document.getElementById('categoryEmoji');
+   762→        if (emojiInput) emojiInput.value = '🍛';
+   763→
+   764→        const colorPicker = document.getElementById('categoryColor');
+   765→        const colorDisplay = document.getElementById('colorDisplay');
+   766→        if (colorPicker && colorDisplay) {
+   767→            colorPicker.value = '#EF4444'; // Default
+   768→            colorDisplay.style.backgroundColor = '#EF4444';
+   769→        }
+   770→    }
+   771→
+   772→    async deleteCategory(id) {
+   773→        // Check if category has products
+   774→        const hasProducts = this.data.products.some(p => p.categoryId == id);
+   775→
+   776→        if (hasProducts) {
+   777→            this.showToast('Cannot delete category: It still contains products. Delete products first!', 'error');
+   778→            return;
+   779→        }
+   780→
+   781→        this.showConfirmModal(
+   782→            'Are you sure you want to delete this category?',
+   783→            async () => {
+   784→                await this.dataService.deleteCategory(id);
+   785→                this.ui.renderCategoriesList();
+   786→                this.ui.renderCategories();
+   787→                this.showToast('Category Deleted');
+   788→            }
+   789→        );
+   790→    }
+   791→
+   792→    editCategory(id) {
+   793→        const cat = this.data.categories.find(c => c.id == id);
+   794→        if (!cat) return;
+   795→
+   796→        this.editingCategoryId = id;
+   797→        if (document.getElementById('editCategoryName')) document.getElementById('editCategoryName').value = cat.name;
+   798→        if (document.getElementById('editCategoryColor')) {
+   799→            document.getElementById('editCategoryColor').value = cat.color;
+   800→            const display = document.getElementById('editColorDisplay');
+   801→            if (display) display.style.backgroundColor = cat.color;
+   802→        }
+   803→        if (document.getElementById('editCategoryEmoji')) {
+   804→            const emoji = cat.emoji || '🍛';
+   805→            document.getElementById('editCategoryEmoji').value = emoji;
+   806→            this.syncEmojiPicker('editCategoryEmojiPicker', emoji);
+   807→        }
+   808→
+   809→        const modal = document.getElementById('categoryModal');
+   810→        if (modal) modal.classList.add('active');
+   811→    }
+   812→
+   813→    async saveCategoryEdit(e) {
+   814→        e.preventDefault();
+   815→        const id = this.editingCategoryId;
+   816→        if (!id) return;
+   817→
+   818→        const name = document.getElementById('editCategoryName').value;
+   819→        const color = document.getElementById('editCategoryColor').value;
+   820→        const emoji = document.getElementById('editCategoryEmoji').value;
+   821→
+   822→        await this.dataService.updateCategory({ id, name, color, emoji });
+   823→        document.getElementById('categoryModal').classList.remove('active');
+   824→
+   825→        this.ui.renderCategoriesList();
+   826→        this.ui.renderCategories();
+   827→        this.showToast('Category Updated');
+   828→        this.editingCategoryId = null;
+   829→    }
+   830→
+   831→    // --- Emoji Picker Helpers ---
+   832→    initEmojiPicker(containerId, hiddenInputId) {
+   833→        const container = document.getElementById(containerId);
+   834→        if (!container) return;
+   835→
+   836→        container.addEventListener('click', (e) => {
+   837→            const opt = e.target.closest('.emoji-option');
+   838→            if (!opt) return;
+   839→
+   840→            // Remove selected class from others IN THIS CONTAINER
+   841→            container.querySelectorAll('.emoji-option').forEach(o => o.classList.remove('selected'));
+   842→            // Add to current
+   843→            opt.classList.add('selected');
+   844→            // Update hidden input
+   845→            const input = document.getElementById(hiddenInputId);
+   846→            if (input) input.value = opt.dataset.emoji;
+   847→        });
+   848→    }
+   849→
+   850→    syncEmojiPicker(containerId, emoji) {
+   851→        const container = document.getElementById(containerId);
+   852→        if (!container) return;
+   853→
+   854→        container.querySelectorAll('.emoji-option').forEach(opt => {
+   855→            opt.classList.toggle('selected', opt.dataset.emoji === emoji);
+   856→        });
+   857→    }
+   858→
+   859→    // --- Checkout ---
+   860→    async checkout() {
+   861→        if (this.cart.length === 0) return;
+   862→
+   863→        const total = this.cart.reduce((s, i) => s + i.total, 0);
+   864→
+   865→        // Calculate next ID based on existing orders
+   866→        const lastOrder = this.data.orders[0]; // Orders are sorted DESC by default
+   867→        let nextIdNum = 1;
+   868→        if (lastOrder) {
+   869→            // If the last order item has a numeric database ID, use it
+   870→            nextIdNum = (lastOrder.id || 0) + 1;
+   871→        }
+   872→
+   873→        const formattedId = `ORD-${String(nextIdNum).padStart(3, '0')}`;
+   874→
+   875→        this.pendingOrder = {
+   876→            id: formattedId,
+   877→            dbId: nextIdNum,
+   878→            timestamp: Date.now(),
+   879→            items: [...this.cart],
+   880→            total: total,
+   881→            status: 'completed',
+   882→            subtotal: total
+   883→        };
+   884→
+   885→        this.ui.showReceipt(this.pendingOrder);
+   886→    }
+   887→
+   888→    async clearAllOrders() {
+   889→        this.showConfirmModal(
+   890→            'Are you sure you want to PERMANENTLY delete ALL sales history? This cannot be undone.',
+   891→            async () => {
+   892→                await this.dataService.clearAllOrders();
+   893→                if (this.ui.renderSales) this.ui.renderSales();
+   894→                this.showToast('All orders deleted. Next order will be ORD-001');
+   895→            }
+   896→        );
+   897→    }
+   898→
+   899→    async printReceipt() {
+   900→        if (!this.pendingOrder) return;
+   901→
+   902→        // Remember if we were in fullscreen
+   903→        const wasFullscreen = !!document.fullscreenElement;
+   904→
+   905→        try {
+   906→            // 1. Save order to database and clear cart
+   907→            await this.dataService.saveOrder(this.pendingOrder);
+   908→            this.cart = [];
+   909→            this.ui.renderCart();
+   910→
+   911→            // 2. Perform Print Sequence (Dual separate jobs as requested)
+   912→            // First Print: Customer Copy
+   913→            const receiptContent = document.getElementById('receiptContent');
+   914→            if (receiptContent) {
+   915→                receiptContent.innerHTML = this.ui.renderReceiptHTML(this.pendingOrder, 'CUSTOMER COPY');
+   916→            }
+   917→            window.print();
+   918→
+   919→            // Small delay for browser to process the first job before second
+   920→            await new Promise(r => setTimeout(r, 1000));
+   921→
+   922→            // Second Print: Counter Copy
+   923→            if (receiptContent) {
+   924→                receiptContent.innerHTML = this.ui.renderReceiptHTML(this.pendingOrder, 'COUNTER COPY');
+   925→                window.print();
+   926→            }
+   927→
+   928→            this.ui.showToast("Order Saved and Printed", "success");
+   929→            this.closeReceiptModal();
+   930→
+   931→            // Refresh Sales view if the tab is active or just to keep state synced
+   932→            if (this.ui.renderSales) this.ui.renderSales();
+   933→
+   934→            // Try to restore fullscreen if it was lost during printing
+   935→            if (wasFullscreen && !document.fullscreenElement) {
+   936→                setTimeout(() => {
+   937→                    document.documentElement.requestFullscreen().catch(() => {
+   938→                        // Silent fail if browser blocks gesture-less restoration
+   939→                    });
+   940→                }, 1000);
+   941→            }
+   942→        } catch (error) {
+   943→            console.error("Print failed:", error);
+   944→            this.ui.showToast("Failed to save order", "error");
+   945→        }
+   946→    }
+   947→
+   948→    closeReceiptModal() {
+   949→        const modal = document.getElementById('receiptModal');
+   950→        if (modal) modal.classList.remove('active');
+   951→        this.pendingOrder = null; // Clear pending if they just close it
+   952→    }
+   953→
+   954→    // --- Helpers Stub for HTML onclicks ---
+   955→    filterProducts(c) { this.ui.renderProducts(c); }
+   956→
+   957→    renderMenuManagement() {
+   958→        const grid = document.getElementById('menuGrid');
+   959→        if (!grid) return;
+   960→
+   961→        grid.innerHTML = '';
+   962→
+   963→        // Group by category
+   964→        this.data.categories.forEach(category => {
+   965→            const catProducts = this.data.products.filter(p => p.categoryId == category.id);
+   966→
+   967→            const section = document.createElement('div');
+   968→            section.className = 'menu-category-section';
+   969→            section.style.marginBottom = '20px';
+   970→
+   971→            // Header with faint background color
+   972→            const header = document.createElement('div');
+   973→            header.className = 'menu-category-header';
+   974→            header.style.backgroundColor = `${category.color}20`; // 20 hex = ~12% opacity
+   975→            header.style.borderLeftColor = category.color;
+   976→            header.style.padding = '10px 15px';
+   977→            header.style.borderRadius = '8px';
+   978→            header.style.marginBottom = '15px';
+   979→            header.innerHTML = `
+   980→                <h3 style="margin:0; color: #333; display:flex; align-items:center;">
+   981→                    <span style="margin-right:10px;">${category.emoji}</span> 
+   982→                    ${category.name}
+   983→                </h3>
+   984→            `;
+   985→            section.appendChild(header);
+   986→
+   987→            // Grid for this category
+   988→            const prodGrid = document.createElement('div');
+   989→            prodGrid.className = 'menu-category-items';
+   990→            prodGrid.style.display = 'grid';
+   991→            prodGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
+   992→            prodGrid.style.gap = '15px';
+   993→
+   994→            if (catProducts.length === 0) {
+   995→                prodGrid.innerHTML = '<div style="color:#999; font-style:italic;">No items in this category</div>';
+   996→            } else {
+   997→                catProducts.forEach(p => {
+   998→                    const div = document.createElement('div');
+   999→                    div.className = 'product-card menu-card';
+  1000→                    div.style.backgroundColor = `${category.color}10`;
+  1001→                    div.style.border = `3px solid ${category.color}`; // Bold 3px outline like POS cards
+  1002→                    div.style.padding = '16px';
+  1003→                    div.style.display = 'flex';
+  1004→                    div.style.flexDirection = 'column';
+  1005→                    div.style.minHeight = '160px'; // Slightly taller
+  1006→                    div.style.aspectRatio = 'auto'; // Prevent squaring
+  1007→                    div.style.overflow = 'visible'; // Ensure buttons are seen
+  1008→
+  1009→                    div.innerHTML = `
+  1010→                        <div style="flex-grow: 1;">
+  1011→                            <h4 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #1f2937; font-weight: 700; line-height: 1.2;">${p.name}</h4>
+  1012→                            <div style="display: flex; flex-direction: column; gap: 4px;">
+  1013→                                <span style="font-weight: 800; color: ${category.color}; font-size: 1.2rem;">Rs. ${p.price}</span>
+  1014→                                <span style="font-size: 1.15rem; color: #1f2937; font-weight: 800;">Qty: ${p.quantityType || 'pcs'}</span>
+  1015→                            </div>
+  1016→                        </div>
+  1017→                        <div style="margin-top: 12px; display: flex; gap: 6px; justify-content: flex-end; border-top: 1px solid ${category.color}20; padding-top: 10px;">
+  1018→                             <button class="btn-secondary btn-small" onclick="posSystem.editProduct('${p.id}')">
+  1019→                                <i class="fas fa-edit"></i>
+  1020→                            </button>
+  1021→                             <button class="btn-danger btn-small" onclick="posSystem.deleteProductFromMenu('${p.id}')">
+  1022→                                <i class="fas fa-trash"></i>
+  1023→                            </button>
+  1024→                        </div>
+  1025→                    `;
+  1026→                    prodGrid.appendChild(div);
+  1027→                });
+  1028→            }
+  1029→
+  1030→            section.appendChild(prodGrid);
+  1031→            grid.appendChild(section);
+  1032→        });
+  1033→
+  1034→        // Handle Orphaned Products (Items whose categories were deleted)
+  1035→        const orphans = this.data.products.filter(p => !p.categoryId || !this.data.categories.find(c => c.id == p.categoryId));
+  1036→
+  1037→        if (orphans.length > 0) {
+  1038→            const section = document.createElement('div');
+  1039→            section.className = 'menu-category-section orphaned-section';
+  1040→            section.style.marginTop = '40px';
+  1041→            section.style.padding = '24px';
+  1042→            section.style.borderRadius = 'var(--radius-xl)';
+  1043→            section.style.background = 'rgba(239, 68, 68, 0.03)';
+  1044→            section.style.border = '2px dashed rgba(239, 68, 68, 0.3)';
+  1045→
+  1046→            const header = document.createElement('div');
+  1047→            header.innerHTML = `
+  1048→                <h3 style="margin:0 0 12px 0; color: #DC2626; display:flex; align-items:center; font-weight:700;">
+  1049→                    <i class="fas fa-exclamation-triangle" style="margin-right:12px;"></i> 
+  1050→                    Items Needing Attention (Orphaned)
+  1051→                </h3>
+  1052→                <p style="font-size: 0.95rem; color: #64748b; margin-bottom: 24px; line-height:1.5;">
+  1053→                    These items belong to categories that have been deleted. You can re-assign them to a new category by clicking <strong>Edit</strong>, or remove them permanently.
+  1054→                </p>
+  1055→            `;
+  1056→            section.appendChild(header);
+  1057→
+  1058→            const prodGrid = document.createElement('div');
+  1059→            prodGrid.className = 'menu-category-items';
+  1060→            prodGrid.style.display = 'grid';
+  1061→            prodGrid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
+  1062→            prodGrid.style.gap = '20px';
+  1063→
+  1064→            orphans.forEach(p => {
+  1065→                const div = document.createElement('div');
+  1066→                div.className = 'product-card menu-card';
+  1067→                div.style.backgroundColor = '#ffffff';
+  1068→                div.style.border = '3px solid #cbd5e1'; // Bold 3px outline like POS cards
+  1069→                div.style.padding = '16px';
+  1070→                div.style.display = 'flex';
+  1071→                div.style.flexDirection = 'column';
+  1072→                div.style.minHeight = '180px';
+  1073→                div.style.aspectRatio = 'auto'; // Prevent squaring
+  1074→                div.style.overflow = 'visible'; // Ensure buttons are seen
+  1075→
+  1076→                div.innerHTML = `
+  1077→                    <div style="flex-grow: 1;">
+  1078→                        <h4 style="margin: 0 0 8px 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; line-height: 1.2;">${p.name}</h4>
+  1079→                        <div style="display: flex; flex-direction: column; gap: 4px;">
+  1080→                            <span style="font-weight: 800; color: #DC2626; font-size: 1.25rem;">Rs. ${p.price}</span>
+  1081→                            <span style="font-size: 1.15rem; color: #1e293b; font-weight: 800;">Qty: ${p.quantityType || 'pcs'}</span>
+  1082→                        </div>
+  1083→                        <div style="font-size:0.8rem; color:#94a3b8; margin-top:8px;">
+  1084→                            <i class="fas fa-exclamation-circle"></i> No Category
+  1085→                        </div>
+  1086→                    </div>
+  1087→                    <div style="margin-top:12px; display:flex; gap:6px; justify-content:flex-end; border-top:1px solid #f1f5f9; padding-top:10px;">
+  1088→                         <button class="btn-secondary btn-small" onclick="posSystem.editProduct('${p.id}')">
+  1089→                            <i class="fas fa-edit"></i>
+  1090→                        </button>
+  1091→                         <button class="btn-danger btn-small" onclick="posSystem.deleteProductFromMenu('${p.id}')">
+  1092→                            <i class="fas fa-trash"></i>
+  1093→                        </button>
+  1094→                    </div>
+  1095→                `;
+  1096→                prodGrid.appendChild(div);
+  1097→            });
+  1098→
+  1099→            section.appendChild(prodGrid);
+  1100→            grid.appendChild(section);
+  1101→        }
+  1102→    }
+  1103→    async deleteProductFromMenu(id) {
+  1104→        this.showConfirmModal(
+  1105→            'Are you sure you want to delete this product? This will remove it from all views.',
+  1106→            async () => {
+  1107→                await this.dataService.deleteProduct(id);
+  1108→                this.renderMenuManagement();
+  1109→                this.ui.renderPOS();
+  1110→                this.showToast('Product Deleted');
+  1111→            }
+  1112→        );
+  1113→    }
+  1114→
+  1115→    showConfirmModal(message, onConfirm) {
+  1116→        const modal = document.getElementById('confirmModal');
+  1117→        const msgEl = document.getElementById('confirmModalMessage');
+  1118→        const confirmBtn = document.getElementById('confirmModalConfirm');
+  1119→        const cancelBtn = document.getElementById('confirmModalCancel');
+  1120→
+  1121→        if (!modal || !msgEl || !confirmBtn || !cancelBtn) {
+  1122→            // Fallback if modal hasn't loaded yet
+  1123→            if (confirm(message)) onConfirm();
+  1124→            return;
+  1125→        }
+  1126→
+  1127→        msgEl.textContent = message;
+  1128→        modal.classList.add('active');
+  1129→
+  1130→        // Force reset orientation
+  1131→        confirmBtn.onclick = null;
+  1132→        cancelBtn.onclick = null;
+  1133→
+  1134→        confirmBtn.onclick = () => {
+  1135→            modal.classList.add('hiding');
+  1136→            setTimeout(() => {
+  1137→                modal.classList.remove('active', 'hiding');
+  1138→                onConfirm();
+  1139→            }, 200);
+  1140→        };
+  1141→
+  1142→        cancelBtn.onclick = () => {
+  1143→            modal.classList.add('hiding');
+  1144→            setTimeout(() => {
+  1145→                modal.classList.remove('active', 'hiding');
+  1146→            }, 200);
+  1147→        };
+  1148→    }
+  1149→}
+  1150→
+  1151→// Start
+  1152→window.posSystem = new POSSystem();
+  1153→
