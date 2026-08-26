@@ -233,52 +233,57 @@ export function SalesTab() {
         </div>
 
         <div className="sales-controls-modern">
-          <div className="month-navigation">
-            <button id="prevMonthBtn" className="month-nav-btn" onClick={() => shiftMonth(-1)}>
-              ◀ Previous
-            </button>
-            <input
-              type="month"
-              id="activeMonthFilter"
-              className="active-month-display"
-              value={activeMonth}
-              onChange={(e) => {
-                setActiveMonth(e.target.value);
-                setDateFilter("");
-              }}
-            />
-            <button id="nextMonthBtn" className="month-nav-btn" onClick={() => shiftMonth(1)}>
-              Next ▶
-            </button>
+          {/* Month filter — unified style */}
+          <div className="filter-group">
+            <label className="filter-label">Month</label>
+            <div className="filter-nav">
+              <button className="filter-nav-btn" onClick={() => shiftMonth(-1)} aria-label="Previous month">
+                <i className="fas fa-chevron-left"></i>
+              </button>
+              <input
+                type="month"
+                className="filter-input"
+                value={activeMonth}
+                onChange={(e) => {
+                  setActiveMonth(e.target.value);
+                  setDateFilter("");
+                }}
+                aria-label="Select month"
+              />
+              <button className="filter-nav-btn" onClick={() => shiftMonth(1)} aria-label="Next month">
+                <i className="fas fa-chevron-right"></i>
+              </button>
+            </div>
           </div>
 
-          <div className="date-filter-section">
-            <label htmlFor="dateWithinMonthFilter">Within Month:</label>
-            <div className="date-navigation-group">
-              <button id="prevDateBtn" className="month-nav-btn small" onClick={() => shiftDate(-1)}>
-                ◀
+          {/* Date filter — identical style to month filter */}
+          <div className="filter-group">
+            <label className="filter-label">Within Month</label>
+            <div className="filter-nav">
+              <button className="filter-nav-btn" onClick={() => shiftDate(-1)} aria-label="Previous day">
+                <i className="fas fa-chevron-left"></i>
               </button>
               <input
                 type="date"
-                id="dateWithinMonthFilter"
-                className="filter-select"
-                placeholder="Select Date"
+                className="filter-input"
                 value={dateFilter}
                 onChange={(e) => {
                   setDateFilter(e.target.value);
                   if (e.target.value) setActiveMonth(e.target.value.substring(0, 7));
                 }}
+                aria-label="Select date"
               />
-              <button id="nextDateBtn" className="month-nav-btn small" onClick={() => shiftDate(1)}>
-                ▶
+              <button className="filter-nav-btn" onClick={() => shiftDate(1)} aria-label="Next day">
+                <i className="fas fa-chevron-right"></i>
               </button>
             </div>
-            <button id="clearDateFilter" className="btn-secondary" onClick={() => setDateFilter("")}>
-              Clear
-            </button>
           </div>
 
-          <button className="btn-secondary" id="exportSalesBtn" onClick={handleExport}>
+          <button className="filter-clear-btn" onClick={() => setDateFilter("")}>
+            <i className="fas fa-times"></i> Clear Date
+          </button>
+
+          <button className="filter-export-btn" onClick={handleExport}>
             <i className="fas fa-download"></i> Export
           </button>
           {activeSalesStatus === "deleted" && (
