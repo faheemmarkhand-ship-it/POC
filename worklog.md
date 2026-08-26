@@ -393,3 +393,41 @@ Verification:
 Stage Summary:
 - Delete sync now works: when a user deletes an order in the UI, the status change (or soft delete) is enqueued locally, pushed to Supabase via sync, and the order's `status` is updated to 'deleted' on the server.
 - Also fixed: sync now runs immediately after any mutation (no longer blocked by stale connectivity state).
+
+---
+Task ID: 15
+Agent: main (orchestrator) — Vercel deployment + mobile receipt fix + GitHub prep
+Task: Fix mobile receipt item shrinkage + convert to single-project Vercel deployment + push to GitHub.
+
+Work Log:
+- Mobile receipt fix: the receipt items used `display: flex` with fixed-width columns that squished on mobile. Changed to `display: grid` with `grid-template-columns: 1fr 28px 50px 55px` so columns keep stable proportions. Added mobile-specific overrides for smaller column widths. VLM verified: "columns properly aligned, not shrinking or squishing".
+- Vercel deployment conversion:
+  - Created 14 Next.js API route files under src/app/api/* replicating all FastAPI endpoints (health, store-info, categories, products, orders, stats, summary/date, summary/category, sync/push, sync/pull).
+  - Created src/lib/supabase-server.ts — server-side Supabase client using @supabase/supabase-js, with helpers (sbSelectAll, sbInsert, sbUpdate, sbSoftDelete, sbCount, etc.).
+  - Installed @supabase/supabase-js npm package.
+  - Updated src/lib/api-client.ts — removed XTransformPort query param (not needed on Vercel; API routes are same-origin under /api/*).
+  - Created vercel.json — Next.js framework, build command, API route functions (maxDuration 30s, 512MB), CORS headers for /api/*.
+  - Created .env.example with all required env vars (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, SUPABASE_SERVICE_ROLE_KEY).
+  - Updated next.config.ts with output: "standalone" for smaller Vercel builds.
+  - Updated README.md with full Vercel deployment guide + environment variable table + API endpoint reference.
+  - Updated .gitignore (excludes node_modules, .next, .env.local, mini-services .venv, upload/extracted, worklog.md, screenshots).
+- Killed the old FastAPI backend (port 8001) — no longer needed; all API routes now run as Next.js serverless functions.
+- Verified all API routes work via the gateway (port 81):
+  - GET /api/health → {status:ok, db:supabase, counts:{store_info:6, categories:7, products:36, orders:5}}
+  - GET /api/categories → 7 categories from Supabase
+  - GET /api/stats?month=2026-02 → {revenue:2210, orders:4, returnedCount:0, returnedValue:0}
+  - GET /api/sync/pull?since=0 → cats=7, prods=36, orders=5
+- Frontend verified: 38 products load, connectivity "Synced", mobile receipt columns aligned.
+
+GitHub prep:
+- Git repo initialized with remote origin → https://github.com/faheemmarkhand-ship-it/POC.git
+- All changes committed (239 files tracked, commit af42d64).
+- Push requires GitHub authentication (user must push from their own machine).
+
+Stage Summary:
+- Mobile receipt item shrinkage fixed (CSS grid layout, stable columns).
+- Entire app converted to single-project Vercel deployment: Next.js frontend + API routes under same domain, Supabase PostgreSQL as the online DB.
+- No more FastAPI server, no XTransformPort, no persistent server dependencies.
+- Offline-first PWA preserved (SQLite WASM + IndexedDB + sync queue + service worker).
+- vercel.json, .env.example, README with deployment steps all created.
+- Ready to push to GitHub + deploy on Vercel.
