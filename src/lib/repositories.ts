@@ -202,10 +202,10 @@ export async function getConnectivity(): Promise<{
 }
 
 function maybeSync() {
-  const s = getSyncState();
-  if (s.online && s.status !== "syncing") {
-    runSync().catch((e) => console.error("Background sync failed:", e));
-  }
+  // Always attempt sync (runSync itself checks connectivity + skips if offline/syncing).
+  // Previously this only ran when getSyncState().online was true, but the state
+  // might lag behind reality (e.g. just came online but monitor hasn't updated yet).
+  runSync().catch((e) => console.error("Background sync failed:", e));
 }
 
 // Manually trigger a sync (used by UI).

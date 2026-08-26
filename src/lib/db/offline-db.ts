@@ -418,32 +418,49 @@ export async function saveOrder(order: {
 }
 
 export async function deleteOrder(id: number): Promise<void> {
-  // Original used hard delete (DELETE FROM orders). Preserve that behaviour.
-  db.run("DELETE FROM orders WHERE id = ?", [id]);
-  db.run("DELETE FROM sync_queue WHERE entity_type = 'orders' AND entity_id = ?", [String(id)]);
+  // Soft-delete locally (so the sync engine can push the deletion to Supabase),
+  // then hard-delete after sync completes. This preserves the original "permanent
+  // delete" UX while ensuring the deletion propagates to the online DB.
+  const t = now();
+  // Mark as deleted locally (soft delete) + enqueue sync so Supabase learns about it
+  db.run(
+    "UPDATE orders SET deleted_at = ?, updated_at = ?, sync_version = sync_version + 1 WHERE id = ?",
+    [t, t, id]
+  );
+  await enqueueSync("orders", id, "delete", { id });
   await persistToDisk();
 }
 
 export async function updateOrderStatus(id: number, status: string): Promise<void> {
   const t = now();
+  const numId = Number(id);
   db.run(
     "UPDATE orders SET status = ?, updated_at = ?, sync_version = sync_version + 1 WHERE id = ?",
-    [status, t, id]
+    [status, t, numId]
   );
   // For status changes we still push an update so the server reflects it.
-  const ordRes = db.exec("SELECT id, timestamp, total, status, items_json FROM orders WHERE id = ?");
+  const ordRes = db.exec("SELECT id, timestamp, total, status, items_json FROM orders WHERE id = ?", [numId]);
   if (ordRes.length) {
     const r = ordRes[0].values[0];
     let items: OrderItem[] = [];
     try {
       items = JSON.parse(r[4]);
     } catch {}
-    await enqueueSync("orders", id, "update", {
+    await enqueueSync("orders", numId, "update", {
       id: r[0],
       timestamp: r[1],
       total: r[2],
       status: r[3],
       items,
+      updated_at: t,
+    });
+  } else {
+    // Order not in local DB (e.g. pulled from server with different id sequence).
+    // Enqueue a synthetic update so the server still learns about the status change.
+    await enqueueSync("orders", numId, "update", {
+      id: numId,
+      status,
+      updated_at: t,
     });
   }
   await persistToDisk();

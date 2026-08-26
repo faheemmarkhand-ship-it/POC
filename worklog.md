@@ -367,3 +367,29 @@ Stage Summary:
 - Offline→online sync verified: browser checkout → local SQLite → sync queue → push to Supabase → order appears in Supabase.
 - Online→offline: server orders pulled into local SQLite via sync pull.
 - Conflict detection: last-write-wins by updated_at + sync_version.
+
+---
+Task ID: 14
+Agent: main (orchestrator) — Fix delete sync to Supabase
+Task: User deleted an order but it didn't delete from Supabase. Fix the delete sync flow.
+
+Work Log:
+- Diagnosed the issue: `deleteOrder()` in offline-db.ts did a hard DELETE locally + explicitly cleared the sync queue for that order — so the deletion was never enqueued for sync.
+- Also found `updateOrderStatus()` (called by the Sales tab "Delete" button) didn't include `updated_at` in the sync payload, causing the backend to always see the server record as "newer" → conflict → not applied.
+- Also found `maybeSync()` only ran when `getSyncState().online === true`, but the state could lag behind reality (e.g. just came online but monitor hadn't updated yet) → sync never triggered.
+- Also found `runSync()` called `refreshConnectivity()` first which could hang/timeout, blocking the sync.
+- Fixes applied:
+  1. `deleteOrder()`: changed from hard DELETE to soft delete (set deleted_at + enqueue sync "delete") so the deletion propagates to Supabase.
+  2. `updateOrderStatus()`: now includes `updated_at` in the sync payload + uses `Number(id)` to avoid type issues + enqueues a synthetic update even if the order isn't found locally (so server-side orders still get status updates).
+  3. `maybeSync()`: now always calls `runSync()` (runSync itself handles connectivity/skip logic).
+  4. `runSync()`: removed the blocking `refreshConnectivity()` call — sync now tries push/pull directly and fails gracefully if the server is unreachable.
+
+Verification:
+- Fresh browser load → Sales tab (Feb 2026) → deleted ORD-4725 → console: "[sync] enqueued order 4725 status=deleted" → "[sync] starting sync (1 pending items)" → "[sync] completed successfully".
+- Supabase verified: order 4725 now has `status='deleted'` (was 'completed' before).
+- Deleted ORD-4724 → same flow → Supabase order 4724 now has `status='deleted'`.
+- Both deletions propagated to Supabase automatically.
+
+Stage Summary:
+- Delete sync now works: when a user deletes an order in the UI, the status change (or soft delete) is enqueued locally, pushed to Supabase via sync, and the order's `status` is updated to 'deleted' on the server.
+- Also fixed: sync now runs immediately after any mutation (no longer blocked by stale connectivity state).

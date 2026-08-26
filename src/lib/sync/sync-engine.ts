@@ -97,9 +97,8 @@ let syncing = false;
 
 export async function runSync(): Promise<void> {
   if (syncing) return;
-  const online = await refreshConnectivity();
-  if (!online) return;
-
+  // Try to sync directly — don't block on a separate connectivity check.
+  // The push/pull will fail gracefully if the server is unreachable.
   syncing = true;
   setSyncState({ status: "syncing", online: true });
   try {
@@ -107,7 +106,7 @@ export async function runSync(): Promise<void> {
     await pullServerChanges();
     setSyncState({ status: "synced", online: true });
   } catch (e) {
-    console.error("Sync failed:", e);
+    console.error("[sync] failed:", e);
     setSyncState({ status: "sync-error", online: true });
   } finally {
     syncing = false;
