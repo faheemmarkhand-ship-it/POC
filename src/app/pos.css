@@ -4978,3 +4978,96 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     }
 }
 
+
+/* ===================================================================
+   DESKTOP POS LAYOUT FIX — cart always visible on the right,
+   products take remaining space, checkout button pinned to bottom.
+   =================================================================== */
+@media (min-width: 769px) {
+    /* POS layout: flex row, products + cart side by side */
+    .pos-layout {
+        display: flex !important;
+        flex-direction: row !important;
+        height: calc(100vh - var(--header-height) - var(--nav-height)) !important;
+        overflow: hidden !important;
+        gap: 0 !important;
+    }
+
+    /* Products section: takes remaining space, scrollable */
+    .products-section {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 16px 20px !important;
+        background: var(--gray-50) !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        display: block !important;
+    }
+
+    /* Cart sidebar: fixed width on the right, always visible */
+    .cart-sidebar {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        transform: none !important;
+        width: var(--cart-width) !important;
+        min-width: var(--cart-width) !important;
+        max-width: var(--cart-width) !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        background: var(--white) !important;
+        border-left: 1px solid var(--gray-200) !important;
+        box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        z-index: auto !important;
+        transition: none !important;
+    }
+
+    /* Cart section: full height, flex column */
+    .cart-section {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        max-height: 100% !important;
+    }
+
+    /* Cart items: scrollable middle area */
+    .cart-items {
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+
+    /* Checkout controls: pinned to bottom of cart */
+    .checkout-controls {
+        flex-shrink: 0 !important;
+        border-top: 1px solid var(--gray-200) !important;
+        background: var(--white) !important;
+        padding: 12px 16px !important;
+    }
+
+    /* Floating cart button: hidden on desktop (cart is always visible) */
+    .floating-cart-btn {
+        display: none !important;
+    }
+
+    /* Cart backdrop: hidden on desktop */
+    .cart-backdrop {
+        display: none !important;
+    }
+}
+
+/* Smaller desktops: narrower cart */
+@media (min-width: 769px) and (max-width: 1200px) {
+    :root { --cart-width: 380px; }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    :root { --cart-width: 340px; }
+}
