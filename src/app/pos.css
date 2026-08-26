@@ -4765,3 +4765,121 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     .receipt-total-line.final { font-size: 0.9rem; }
     .receipt-footer { font-size: 0.72rem; }
 }
+
+/* ===================================================================
+   MOBILE PRODUCT LAYOUT FIX — full width, easy scroll, no shrinking
+   =================================================================== */
+@media (max-width: 768px) {
+    /* Products section: full width, no extra padding */
+    .products-section {
+        padding: 8px 10px 80px 10px !important;
+    }
+
+    /* Products header: compact */
+    .products-header {
+        margin-bottom: 8px !important;
+        gap: 6px !important;
+    }
+    .products-header h2 {
+        font-size: 1rem !important;
+    }
+
+    /* Search: full width */
+    .search-input {
+        width: 100% !important;
+        padding: 7px 10px 7px 32px !important;
+        font-size: 0.85rem !important;
+    }
+    .search-icon {
+        left: 8px !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Category pills: horizontal scroll, no wrap */
+    .pos-layout .products-section > div[style*="flex-wrap"] {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        padding: 4px 0 !important;
+        gap: 6px !important;
+        scrollbar-width: none !important;
+    }
+    .pos-layout .products-section > div[style*="flex-wrap"]::-webkit-scrollbar {
+        display: none !important;
+    }
+    .category-pill {
+        flex-shrink: 0 !important;
+        padding: 6px 12px !important;
+        font-size: 0.78rem !important;
+        white-space: nowrap !important;
+    }
+
+    /* Product grid: 2 columns, full width, no gaps wasting space */
+    .category-products-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 6px !important;
+    }
+
+    /* Product cards: use full available space */
+    .product-card {
+        padding: 8px !important;
+        min-height: 90px !important;
+        border-width: 2px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+    }
+    .product-card-price {
+        font-size: 0.95rem !important;
+        margin-bottom: 2px !important;
+    }
+    .product-card-name {
+        font-size: 0.72rem !important;
+        line-height: 1.1 !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2 !important;
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+    }
+    .product-card-quantity {
+        font-size: 0.65rem !important;
+    }
+
+    /* Category header: compact */
+    .pos-category-header {
+        padding: 6px 8px !important;
+        margin-bottom: 6px !important;
+    }
+    .pos-category-header h3 {
+        font-size: 0.85rem !important;
+    }
+    .category-emoji {
+        font-size: 1rem !important;
+    }
+
+    /* Manual entry: more compact */
+    .manual-kg-entry-section {
+        padding: 8px !important;
+        margin-bottom: 8px !important;
+    }
+    .manual-kg-entry-section h3 {
+        font-size: 0.8rem !important;
+        margin-bottom: 6px !important;
+    }
+}
+
+/* Very small phones: 1 column for products but full width */
+@media (max-width: 380px) {
+    .category-products-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .product-card {
+        min-height: 70px !important;
+        padding: 8px 10px !important;
+    }
+    .product-card-name {
+        font-size: 0.78rem !important;
+        -webkit-line-clamp: 1 !important;
+    }
+}
