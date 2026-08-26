@@ -319,3 +319,51 @@ Stage Summary:
 - All layout bugs fixed: no gap between header and nav, cart no longer behind subheader, content no longer overlapping nav.
 - Polish: consistent product card heights, centered cart items, bigger mobile touch targets.
 - Desktop + mobile both verified clean.
+
+---
+Task ID: 13
+Agent: main (orchestrator) — Supabase online DB connection + schema push + sync verification
+Task: Connect Supabase as the online database, push schema + seed data, verify offline→online sync works end-to-end.
+
+Work Log:
+- User provided Supabase credentials:
+  - NEXT_PUBLIC_SUPABASE_URL=https://tiybeuglcubkndufyisp.supabase.co
+  - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_pqBNliqYZs1hTq-O4Cb4ow_wEZIABye
+  - DB password: D2TxtsrRt4qW21zA
+- Tested connectivity: anon key works for REST (PostgREST) but can't run DDL (CREATE TABLE).
+- Found the correct Supabase pooler region by testing: ap-southeast-1 (Singapore) — aws-0-ap-southeast-1.pooler.supabase.com:6543.
+- Created push_schema.py — connects via psycopg2 with the DB password and:
+  - Drops + creates 4 tables (store_info, categories, products, orders) with sync columns (updated_at, deleted_at, sync_version)
+  - Creates 7 indexes for common queries
+  - Enables RLS + permissive policies (anon key can read/write)
+  - Seeds all data: 6 store_info, 7 categories, 36 products, 0 orders
+  - Resets sequences
+  - Verified: store_info=6, categories=7, products=36, orders=0 ✓
+- Created app/supabase_client.py — a Supabase REST API wrapper (uses anon key, no DDL needed).
+- Created app/main_supabase.py — a complete FastAPI backend that uses Supabase (PostgREST) as the data store for all CRUD + sync endpoints. Replaces the SQLAlchemy/SQLite version.
+- Created .env with the Supabase credentials.
+- Started the Supabase-backed backend on port 8001.
+- Fixed a bug in sync_push: orders had `items` (array) but the DB column is `items_json` (text). Added conversion: `items` → `json.dumps(items)` → `items_json`.
+- Verified the online flow end-to-end:
+  - /api/health → connected to Supabase, counts correct
+  - /api/categories → returns 7 categories from Supabase
+  - /api/stats → works (revenue/orders calculated from Supabase data)
+  - POST /api/orders → creates order in Supabase
+  - POST /api/sync/push → pushes queued changes to Supabase (applied: orders=1)
+  - GET /api/sync/pull → pulls server records (categories=7, products=36, orders=N)
+  - Conflict detection works (server-updated > client-updated → conflict, no overwrite)
+- Agent Browser end-to-end test (fresh start):
+  - Cleared IndexedDB + localStorage → fresh load
+  - "Let's Go" → SQLite WASM seeded locally (38 products)
+  - Connectivity: "Online" (backend reachable)
+  - Added product to cart → checkout → print receipt (saved order locally)
+  - Supabase orders went from 2 → 3 — the new order was pushed via sync automatically
+  - Sales tab (Feb 2026): 298 rows (local seed + synced server orders)
+
+Stage Summary:
+- Supabase is now the online database (PostgreSQL, ap-southeast-1 region).
+- Schema + seed data pushed directly via psycopg2 (tables: store_info, categories, products, orders + sync columns).
+- FastAPI backend (port 8001) uses Supabase REST API (PostgREST) with the anon key — no DB password needed at runtime.
+- Offline→online sync verified: browser checkout → local SQLite → sync queue → push to Supabase → order appears in Supabase.
+- Online→offline: server orders pulled into local SQLite via sync pull.
+- Conflict detection: last-write-wins by updated_at + sync_version.
