@@ -4483,3 +4483,226 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     .logo { height: calc(var(--header-height) - 16px) !important; max-width: 38px !important; }
     .store-info h1 { font-size: 0.9rem !important; }
 }
+
+/* ===================================================================
+   LAYOUT FIX — sticky header+nav, no gaps, no overlaps
+   Fixes: gap between header and nav, cart going behind subheader,
+   main content starting under the nav. Professional UI/UX spacing.
+   =================================================================== */
+
+/* App container: no extra padding (header+nav are sticky, not fixed) */
+.app-container {
+    padding-top: 0 !important;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header: sticky (not fixed) — stacks naturally, no gaps */
+.header {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 100;
+    height: var(--header-height);
+    flex-shrink: 0;
+}
+
+/* Nav tabs: sticky, directly below header — zero gap */
+.nav-tabs {
+    position: sticky !important;
+    top: var(--header-height) !important;
+    z-index: 95;
+    flex-shrink: 0;
+}
+
+/* Main content: no margin-top needed (header+nav are sticky, take their own space) */
+.main-content {
+    margin-top: 0 !important;
+    padding: var(--spacing-4) var(--spacing-6);
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* POS layout: full height below header+nav, no overlap */
+.pos-layout {
+    height: calc(100vh - var(--header-height) - var(--nav-height)) !important;
+    overflow: hidden;
+}
+
+/* Cart sidebar: starts below nav, not behind it */
+.cart-sidebar {
+    height: calc(100vh - var(--header-height) - var(--nav-height)) !important;
+    top: auto !important;
+    position: relative;
+}
+
+/* Products section: proper scroll area */
+.products-section {
+    height: 100%;
+    overflow-y: auto;
+}
+
+/* Cart section: full height of the sidebar */
+.cart-section {
+    height: 100%;
+}
+
+/* Cart items: flex-grow to fill, scroll inside */
+.cart-items {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+/* Checkout controls: pinned to bottom of cart */
+.checkout-controls {
+    flex-shrink: 0;
+}
+
+/* Fix: nav no longer needs sticky override on mobile (it's sticky everywhere now) */
+@media (max-width: 768px) {
+    .nav-tabs { top: var(--header-height) !important; }
+    .pos-layout {
+        height: auto !important;
+        overflow: visible !important;
+    }
+    .products-section { overflow: visible !important; }
+    .cart-sidebar {
+        position: fixed !important;
+        bottom: 0; left: 0; right: 0;
+        top: auto !important;
+        height: auto !important;
+        max-height: 75vh;
+    }
+}
+
+
+/* ===================================================================
+   POLISH — fine-tune spacing, alignment, consistency
+   =================================================================== */
+
+/* Add Custom Item card: consistent alignment */
+.manual-kg-entry-section .manual-kg-form {
+    align-items: stretch;
+}
+.manual-kg-entry-section .manual-kg-form > * {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+.manual-kg-entry-section .manual-kg-form input,
+.manual-kg-entry-section .manual-kg-form .dropdown-selected {
+    min-height: 44px;
+}
+.manual-kg-entry-section .btn-add-custom {
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Category pills: consistent gap */
+.pos-layout .products-section .category-pill,
+.products-header + div .category-pill {
+    margin: 0;
+}
+
+/* Products section: consistent outer padding */
+.products-section {
+    padding: 16px 20px;
+}
+
+/* Search bar: better width on desktop */
+@media (min-width: 769px) {
+    .search-input { width: 300px; }
+    .products-header { gap: 16px; }
+}
+
+/* Cart item: vertically center quantity controls + price + delete */
+.cart-item-actions {
+    align-items: center !important;
+}
+.cart-item-amount {
+    display: flex;
+    align-items: center;
+}
+
+/* Fix: cart-items scroll area uses flex properly */
+.cart-section {
+    display: flex;
+    flex-direction: column;
+}
+.cart-items {
+    flex: 1 1 auto;
+    overflow-y: auto;
+}
+.checkout-controls {
+    flex-shrink: 0;
+}
+
+
+/* ===================================================================
+   MOBILE POLISH — product cards, cart sheet, touch targets
+   =================================================================== */
+
+/* Product card text: prevent messy wrapping, consistent height */
+@media (max-width: 768px) {
+    .product-card-name {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 2.4em;
+        line-height: 1.2;
+    }
+    .product-card {
+        min-height: 120px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+    }
+    /* More gap between Add Custom Item box and category tabs */
+    .manual-kg-entry-section { margin-bottom: 16px !important; }
+    /* More padding around category pills row */
+    .pos-layout .products-section > div[style*="flex-wrap"] {
+        padding: 4px 0 8px 0 !important;
+        gap: 6px !important;
+    }
+    /* Cart sheet: ensure it's above everything when open */
+    .cart-sidebar.active {
+        z-index: 80 !important;
+    }
+    /* Floating cart button: only visible when cart closed + items exist */
+    .floating-cart-btn {
+        z-index: 70 !important;
+        bottom: 16px !important;
+        right: 16px !important;
+    }
+    /* Cart close button: bigger touch target */
+    .cart-sidebar .btn-icon {
+        width: 36px !important;
+        height: 36px !important;
+    }
+    /* Quantity buttons: bigger touch target */
+    .quantity-btn {
+        width: 32px !important;
+        height: 32px !important;
+        font-size: 1.1rem !important;
+    }
+}
+
+/* Desktop polish: consistent product card heights */
+@media (min-width: 769px) {
+    .product-card {
+        min-height: 130px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .product-card-name {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+}
+

@@ -280,3 +280,42 @@ Verification:
 Stage Summary:
 - Header redesigned professionally: real logo, balanced layout, clean spacing, vertically aligned.
 - Supabase details removed from Settings UI (config.py + .env.example retain the instructions for manual setup).
+
+---
+Task ID: 12
+Agent: main (orchestrator) — Layout bug fixes (sidebar behind nav, header-nav gap)
+Task: Fix sidebar going behind subheader, excessive gap between header and tab nav, and do a full UI/UX bug audit for desktop + mobile.
+
+Work Log:
+- VLM UI/UX audit of user screenshot identified:
+  1. Cart sidebar going behind/under the tab navigation (z-index/positioning bug)
+  2. Excessive 56px gap between the red header and the tab nav bar ("dead space")
+  3. Main content starting 12px too high, overlapping the nav
+  4. Cart item internal alignment (qty/price/delete not vertically centered)
+  5. Mobile: product card text wrapping messily, inconsistent card heights
+  6. Mobile: tight spacing between Add Custom Item box and category tabs
+- Root cause: header was `position: fixed` (56px) + nav `position: fixed` at `top: var(--header-height)` (56px) + `.main-content` had `margin-top: var(--nav-height)` (only 44px, didn't account for the 56px header). This created a 56px dead zone and caused content to start 12px under the nav.
+
+Fixes applied (appended to pos.css):
+1. **Layout restructure**: Changed `.header` and `.nav-tabs` from `position: fixed` to `position: sticky` — they now stack naturally with zero gap. Removed `.main-content { margin-top }` since sticky elements take their own space.
+2. **POS layout height**: `.pos-layout { height: calc(100vh - var(--header-height) - var(--nav-height)) }` — fills exactly the space below header+nav, no overlap.
+3. **Cart sidebar**: Starts below nav (`top: auto; position: relative`), no longer goes behind it.
+4. **Cart section flex**: proper flex column with scrollable cart-items + pinned checkout button.
+5. **Cart item alignment**: vertically centered qty controls + price + delete button.
+6. **Product card text**: `-webkit-line-clamp: 2` to prevent messy wrapping, consistent card heights.
+7. **Mobile polish**: bigger touch targets (32px qty buttons, 36px close), more spacing between sections, cart sheet z-index above content.
+8. **Search bar**: 300px width on desktop, better alignment.
+9. **Add Custom Item card**: consistent 44px height for all form elements (dropdown, input, button).
+
+Verification (Agent Browser measurements):
+- Before: header bottom=56, nav top=112 (gap=56px), main top=144 (overlapping nav by 12px)
+- After: header bottom=56, nav top=56 (gap=0), main top=100 (no overlap), cart top=114 (below nav)
+- Mobile (390x844): header→nav gap=0, main starts at 100, cart is a fixed bottom sheet.
+- Sales (Feb 2026): 5 KPI cards, 296 rows, filters in a row on desktop.
+- VLM confirmed: "Header-nav gap fixed. Cart sidebar positioned correctly. No overlap or z-index issues."
+- Note: the "N" black circle in screenshots is the Agent Browser's own recording overlay, NOT part of the app (confirmed: not in DOM).
+
+Stage Summary:
+- All layout bugs fixed: no gap between header and nav, cart no longer behind subheader, content no longer overlapping nav.
+- Polish: consistent product card heights, centered cart items, bigger mobile touch targets.
+- Desktop + mobile both verified clean.
