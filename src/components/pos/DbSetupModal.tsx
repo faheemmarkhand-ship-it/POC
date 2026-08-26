@@ -38,6 +38,7 @@ export function DbSetupModal() {
     <div className="modal active db-setup-modal" id="dbSetupModal">
       <div className="modal-content db-setup-content">
         <div className="db-setup-icon">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/LOGO.jpg"
             alt="Shop Logo"
@@ -51,11 +52,6 @@ export function DbSetupModal() {
           />
         </div>
         <h2 className="db-setup-title">Naseeb Biryani and Pakwan Center</h2>
-        <p className="db-setup-description">
-          Offline-first POS system. Runs locally with{" "}
-          <strong>SQLite WebAssembly</strong> in your browser, and syncs to the
-          FastAPI + PostgreSQL backend when online.
-        </p>
 
         <button
           className="btn-primary db-setup-button"
@@ -71,11 +67,6 @@ export function DbSetupModal() {
             <i className="fas fa-spinner fa-spin"></i> Loading database...
           </div>
         )}
-
-        <p className="db-setup-footer">
-          <i className="fas fa-lock"></i> Your data stays on your device, with
-          optional server sync.
-        </p>
       </div>
     </div>
   );

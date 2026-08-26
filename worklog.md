@@ -217,3 +217,36 @@ Stage Summary:
 - Cart is now a slide-up bottom sheet on mobile with a floating button to reopen it.
 - Sales page KPIs and filters stack properly.
 - Desktop layout unchanged (no regressions).
+
+---
+Task ID: 10
+Agent: main (orchestrator) — Logo restore + scale reduction + Supabase config
+Task: Restore the real logo, reduce overall app scale for small desktops, add Supabase connection config, remove modal description text.
+
+Work Log:
+- Restored real LOGO.jpg image in Header.tsx (replaced the "NB" text badge with the actual <img> tag pointing to /LOGO.jpg, 1024x1024 natural size).
+- Updated DbSetupModal.tsx: removed the descriptive paragraph ("Offline-first POS system. Runs locally with SQLite WebAssembly...") and the footer paragraph. Modal now shows only: logo + title + "Let's Go" button.
+- Added global scale reduction CSS to pos.css (3 breakpoints):
+  - max-width 1440px: html font 15px, header 64px, nav 48px
+  - max-width 1280px: html font 14px, header 56px, nav 44px, cart-width 440px, smaller product cards
+  - max-width 1100px: html font 13px, cart-width 380px, 130px product cards
+  - Large desktops (>1440px): unchanged (16px font, 80px header) — no regression
+- Added Supabase support:
+  - Updated mini-services/pos-api/app/config.py: comprehensive docstring showing exactly how to use Supabase (connection string format, step-by-step)
+  - Created mini-services/pos-api/.env.example with Supabase example + instructions
+  - Added psycopg2-binary to requirements.txt (required for PostgreSQL connections)
+  - Added "Online Database (Supabase)" section to SettingsTab.tsx with a code-block showing the .env format and step-by-step instructions
+
+Verification:
+- Startup modal: shows only logo + title + "Let's Go" (description text removed).
+- Header logo: /LOGO.jpg loads correctly (1024x1024 natural, displayed 150x38).
+- Scale at 1280x720: html font 14px, header 56px, nav 44px — compact and efficient.
+- Scale at 1920x1080: html font 16px, header 80px — no regression on large screens.
+- Settings: Supabase section visible with env hint (POS_API_DATABASE_URL) and steps (supabase.com).
+- VLM confirmed: "Logo visible, compact scale, efficient layout".
+
+Stage Summary:
+- Real logo restored in header.
+- App scales down smoothly on small desktops (3 breakpoints).
+- Supabase connection is one env var: POS_API_DATABASE_URL in mini-services/pos-api/.env
+- Startup modal cleaned up (no description text).

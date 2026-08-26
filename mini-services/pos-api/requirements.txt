@@ -2,3 +2,6 @@ fastapi
 uvicorn[standard]
 sqlalchemy>=2.0
 pydantic>=2
+# PostgreSQL driver — required when using Supabase / PostgreSQL as the online DB.
+# (The default SQLite backend works without it.)
+psycopg2-binary>=2.9

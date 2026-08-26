@@ -321,6 +321,29 @@ export function SettingsTab() {
         </div>
       </div>
 
+      {/* Online Database Configuration (Supabase) */}
+      <div className="settings-section">
+        <h3><i className="fas fa-cloud"></i> Online Database (Supabase)</h3>
+        <p style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginBottom: "12px", lineHeight: 1.5 }}>
+          To connect a Supabase PostgreSQL database as your online store, add your connection URL to the backend's environment file:
+        </p>
+        <div style={{ background: "var(--gray-900)", color: "#e2e8f0", padding: "12px 14px", borderRadius: "8px", fontFamily: "monospace", fontSize: "0.78rem", overflowX: "auto", marginBottom: "12px" }}>
+          <div style={{ color: "#94a3b8", marginBottom: "4px" }}># mini-services/pos-api/.env</div>
+          <div style={{ color: "#86efac" }}>POS_API_DATABASE_URL=</div>
+          <div style={{ color: "#fde68a", paddingLeft: "8px" }}>postgresql+psycopg://postgres.[ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres</div>
+        </div>
+        <ol style={{ fontSize: "0.85rem", color: "var(--gray-700)", paddingLeft: "18px", lineHeight: 1.6, marginBottom: "12px" }}>
+          <li>Create a project at <strong>supabase.com</strong></li>
+          <li>Project Settings → Database → Connection string → URI</li>
+          <li>Paste it in <code style={{ background: "var(--gray-100)", padding: "1px 5px", borderRadius: "3px", fontSize: "0.8rem" }}>mini-services/pos-api/.env</code> as <code style={{ background: "var(--gray-100)", padding: "1px 5px", borderRadius: "3px", fontSize: "0.8rem" }}>POS_API_DATABASE_URL</code></li>
+          <li>Change <code style={{ background: "var(--gray-100)", padding: "1px 5px", borderRadius: "3px", fontSize: "0.8rem" }}>postgresql://</code> to <code style={{ background: "var(--gray-100)", padding: "1px 5px", borderRadius: "3px", fontSize: "0.8rem" }}>postgresql+psycopg://</code></li>
+          <li>Restart the backend — tables auto-create + seed data imports</li>
+        </ol>
+        <p style={{ fontSize: "0.8rem", color: "var(--gray-500)", marginTop: "8px" }}>
+          <i className="fas fa-info-circle"></i> Until you add a Supabase link, the backend uses local SQLite. The app works offline regardless — Supabase is only for online sync/backup.
+        </p>
+      </div>
+
       {/* Receipt Header & Footer */}
       <div className="settings-section">
         <h3>Receipt Header & Footer</h3>
