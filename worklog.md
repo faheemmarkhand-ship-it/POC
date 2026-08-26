@@ -250,3 +250,33 @@ Stage Summary:
 - App scales down smoothly on small desktops (3 breakpoints).
 - Supabase connection is one env var: POS_API_DATABASE_URL in mini-services/pos-api/.env
 - Startup modal cleaned up (no description text).
+
+---
+Task ID: 11
+Agent: main (orchestrator) — Header redesign + remove Supabase section
+Task: Fix logo placement/spacing as a professional UI/UX designer would; remove Supabase details from Settings (user will add manually).
+
+Work Log:
+- Analyzed the user's screenshot with VLM as a professional UI/UX designer review:
+  - Issue: logo showed as a grey placeholder box (the original .logo CSS had width:150px, height:150px, background:#9CA3AF, margin-top:15px — designed for the old "floating logo" layout, now broken inline).
+  - Issue: vertical misalignment between logo box and title text (text floated higher than logo center).
+  - Issue: unbalanced spacing — heavy visual weight on left, empty space on right.
+- Redesigned the header with !important overrides appended to pos.css:
+  - .logo: height = header-height - 22px (clean 38px badge in 56px header), max-width 52px, border-radius, white background padding, subtle shadow, object-fit: cover, no border/margin-top.
+  - .store-info: flex:1, vertically centered, h1 with proper font-size/line-height, nowrap + ellipsis.
+  - .header-content: max-width 1600px centered, gap: spacing-4, balanced flex layout.
+  - .header-window-controls: flex-shrink:0, right-aligned, compact 36px buttons with translucent white background.
+  - Responsive: logo shrinks further at 1280px (44px) and 768px (38px).
+- Removed the "Online Database (Supabase)" section from SettingsTab.tsx (user will add the connection manually).
+
+Verification:
+- Logo now displays as the actual restaurant logo (white square with red graphical elements), not a grey box.
+- Logo is 38x38px, vertically centered in the 56px header.
+- Title "Naseeb Biryani and Pakwan Center" sits cleanly next to the logo with balanced spacing.
+- Close button (X) is right-aligned with a translucent white background.
+- Supabase section removed from Settings (confirmed: "Supabase section removed ✓").
+- VLM confirmed: "Logo displaying correctly, header functional and visually acceptable".
+
+Stage Summary:
+- Header redesigned professionally: real logo, balanced layout, clean spacing, vertically aligned.
+- Supabase details removed from Settings UI (config.py + .env.example retain the instructions for manual setup).

@@ -4382,3 +4382,104 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
   :root { --cart-width: 380px; }
   .category-products-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; }
 }
+
+/* ===================================================================
+   HEADER REDESIGN — Professional, balanced layout
+   Logo is a clean rounded badge, vertically centered with the title.
+   Overrides the original "floating 150px box" design.
+   =================================================================== */
+.logo-section,
+.logo-section-inline {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+}
+
+.logo {
+    height: calc(var(--header-height) - 22px) !important;
+    width: auto !important;
+    max-width: 52px !important;
+    border-radius: var(--radius-md) !important;
+    object-fit: cover !important;
+    background: var(--white) !important;
+    padding: 2px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25) !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    margin-top: 0 !important;
+    border: none !important;
+    display: block !important;
+}
+
+/* Store info: vertically centered with logo, takes remaining space */
+.store-info {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+.store-info h1 {
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    color: var(--white) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin: 0 !important;
+    letter-spacing: 0.2px !important;
+}
+
+/* Header content: clean flex with balanced spacing */
+.header-content {
+    max-width: 1600px !important;
+    margin: 0 auto !important;
+    padding: 0 var(--spacing-6) !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: var(--spacing-4) !important;
+}
+
+/* Window controls: right-aligned, compact */
+.header-window-controls {
+    display: flex !important;
+    gap: var(--spacing-2) !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.header-icon-btn {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border: none !important;
+    color: var(--white) !important;
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: var(--radius-md) !important;
+    cursor: pointer !important;
+    transition: var(--transition-all) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1rem !important;
+}
+
+.header-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Compact header on small desktops */
+@media (max-width: 1280px) {
+    .logo { height: calc(var(--header-height) - 18px) !important; max-width: 44px !important; }
+    .store-info h1 { font-size: 1.05rem !important; }
+}
+
+@media (max-width: 768px) {
+    .logo { height: calc(var(--header-height) - 16px) !important; max-width: 38px !important; }
+    .store-info h1 { font-size: 0.9rem !important; }
+}
