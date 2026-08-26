@@ -1,12 +1,10 @@
 // src/lib/api-client.ts
-// Thin fetch wrapper for the FastAPI backend (port 8001 via the Caddy gateway).
-// All requests use relative paths with ?XTransformPort=8001 so the gateway routes them.
-
-const PORT = "8001";
+// Fetch wrapper for the Next.js API routes (under /api/* on the same domain).
+// On Vercel (and in production), all API calls go to /api/* on the same origin.
+// No XTransformPort needed — Next.js API routes are served by the same app.
 
 function url(path: string, params?: Record<string, string | undefined>) {
   const u = new URL(path, window.location.origin);
-  u.searchParams.set("XTransformPort", PORT);
   if (params) {
     for (const [k, v] of Object.entries(params)) {
       if (v !== undefined && v !== null && v !== "") u.searchParams.set(k, v);
@@ -24,7 +22,7 @@ async function req<T>(path: string, options?: RequestInit, params?: Record<strin
     let detail = res.statusText;
     try {
       const body = await res.json();
-      detail = body.detail || body.message || detail;
+      detail = body.detail || body.message || body.error || detail;
     } catch {}
     throw new Error(`API ${res.status}: ${detail}`);
   }
