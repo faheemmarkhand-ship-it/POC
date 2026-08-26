@@ -166,18 +166,18 @@ export function ReceiptModal() {
   if (!open || !pendingOrder) return null;
 
   return (
-    <div className="modal active" id="receiptModal" onClick={(e) => {
+    <div className="modal active receipt-modal-wrapper" id="receiptModal" onClick={(e) => {
       if (e.target === e.currentTarget) handleClose();
     }}>
       <div className="modal-content receipt-modal">
-        <div className="modal-header">
+        <div className="modal-header receipt-modal-header">
           <h3>Receipt</h3>
           <button type="button" className="modal-close" id="closeReceiptModal" onClick={handleClose}>
             <i className="fas fa-times"></i>
           </button>
         </div>
         <div className="receipt-content" id="receiptContent" ref={printRef} />
-        <div className="modal-actions">
+        <div className="modal-actions receipt-modal-actions">
           <button type="button" className="btn-secondary" id="closeReceipt" onClick={handleClose}>
             <i className="fas fa-times"></i> Close
           </button>

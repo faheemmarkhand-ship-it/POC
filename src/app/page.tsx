@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { usePosStore } from "@/stores/pos-store";
+import type { TabName } from "@/stores/pos-store";
 import { Header } from "@/components/pos/Header";
 import { NavTabs } from "@/components/pos/NavTabs";
 import { DbSetupModal } from "@/components/pos/DbSetupModal";
@@ -15,15 +17,69 @@ import { SalesTab } from "@/components/pos/SalesTab";
 import { MenuTab } from "@/components/pos/MenuTab";
 import { SettingsTab } from "@/components/pos/SettingsTab";
 
+const TAB_ORDER: TabName[] = ["pos", "sales", "menu", "settings"];
+
 export default function Home() {
   const activeTab = usePosStore((s) => s.activeTab);
+  const setActiveTab = usePosStore((s) => s.setActiveTab);
   const dataLoaded = usePosStore((s) => s.dataLoaded);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Swipe left/right to change tabs (mobile)
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    let startX = 0;
+    let startY = 0;
+    let isSwiping = false;
+
+    const onStart = (e: TouchEvent) => {
+      // Don't interfere with modals or scrollable elements
+      const target = e.target as HTMLElement;
+      if (target.closest(".modal, .cart-sidebar, .product-card, .sales-table-container, .menu-card, input, select, textarea, button")) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      isSwiping = false;
+    };
+
+    const onMove = (e: TouchEvent) => {
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      // Only treat as horizontal swipe if dx > dy (avoid vertical scroll)
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+        isSwiping = true;
+      }
+    };
+
+    const onEnd = (e: TouchEvent) => {
+      if (!isSwiping) return;
+      const dx = (e.changedTouches[0].clientX) - startX;
+      if (Math.abs(dx) < 80) return; // require a decisive swipe
+      const idx = TAB_ORDER.indexOf(activeTab);
+      if (dx < 0 && idx < TAB_ORDER.length - 1) {
+        // swipe left → next tab
+        setActiveTab(TAB_ORDER[idx + 1]);
+      } else if (dx > 0 && idx > 0) {
+        // swipe right → prev tab
+        setActiveTab(TAB_ORDER[idx - 1]);
+      }
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: true });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+    };
+  }, [activeTab, setActiveTab]);
 
   return (
     <div className="app-container">
       <Header />
       <NavTabs />
-      <main className="main-content">
+      <main className="main-content" ref={mainRef}>
         <div className={`tab-content ${activeTab === "pos" ? "active" : ""}`} id="pos-tab">
           {activeTab === "pos" && dataLoaded && <PosTab />}
         </div>

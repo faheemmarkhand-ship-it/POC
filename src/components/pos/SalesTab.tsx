@@ -219,17 +219,6 @@ export function SalesTab() {
               <i className="fas fa-chart-pie"></i> Visual
             </button>
           </div>
-          <div className="sales-search-wrapper">
-            <i className="fas fa-search search-icon"></i>
-            <input
-              type="text"
-              id="salesSearchInput"
-              placeholder="Search Order ID..."
-              className="sales-search-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
         </div>
 
         <div className="sales-controls-modern">
@@ -341,6 +330,18 @@ export function SalesTab() {
           </div>
 
           <div className="sales-table-container">
+            {/* Search bar inside the table area */}
+            <div className="sales-table-search">
+              <div className="search-input-wrapper">
+                <i className="fas fa-search search-icon"></i>
+                <input
+                  type="text"
+                  placeholder="Search Order ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
             <table className="sales-table" id="salesTable">
               <thead>
                 <tr>

@@ -5344,3 +5344,202 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
         justify-content: center;
     }
 }
+
+/* ===================================================================
+   RECEIPT MODAL — mobile-friendly, sticky bottom buttons
+   =================================================================== */
+.receipt-modal-wrapper {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+}
+
+.receipt-modal {
+    max-width: 480px !important;
+    width: 100% !important;
+    max-height: 100vh !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+}
+
+.receipt-modal-header {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--gray-200);
+    background: white;
+}
+
+.receipt-content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+}
+
+.receipt-modal-actions {
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 12px !important;
+    background: white;
+    border-top: 1px solid var(--gray-200);
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.06);
+    margin: 0 !important;
+    gap: 8px;
+}
+
+/* On mobile: full-width buttons stacked side by side */
+@media (max-width: 768px) {
+    .receipt-modal-actions {
+        flex-direction: row !important;
+    }
+    .receipt-modal-actions button {
+        flex: 1;
+        height: 44px;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+}
+
+/* ===================================================================
+   SWIPE TO CHANGE TABS (mobile)
+   =================================================================== */
+@media (max-width: 768px) {
+    .main-content {
+        touch-action: pan-y;
+    }
+}
+
+/* ===================================================================
+   SALES TABLE — search bar inside the table area
+   =================================================================== */
+.sales-table-search {
+    padding: 8px 12px;
+    background: white;
+    border-bottom: 1px solid var(--gray-200);
+}
+.sales-table-search .search-input-wrapper {
+    position: relative;
+}
+.sales-table-search .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-400);
+    font-size: 0.85rem;
+}
+.sales-table-search input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+    font-size: 0.85rem;
+}
+
+/* ===================================================================
+   MENU — collapsible category sections (toggle show/hide items)
+   =================================================================== */
+.menu-category-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s ease;
+}
+.menu-category-header:hover {
+    background: rgba(0,0,0,0.03);
+}
+.menu-category-toggle {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-500);
+    font-size: 0.9rem;
+    transition: transform 0.2s ease;
+}
+.menu-category-section.collapsed .menu-category-toggle {
+    transform: rotate(-90deg);
+}
+.menu-category-section.collapsed > .menu-category-items,
+.menu-category-section.collapsed > div:last-child {
+    display: none !important;
+}
+
+/* ===================================================================
+   RECEIPT MODAL — FIX: buttons always visible, content scrolls
+   =================================================================== */
+.modal.receipt-modal-wrapper {
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    padding: 0 !important;
+    display: flex !important;
+}
+
+.modal.receipt-modal-wrapper .modal-content {
+    max-height: 100vh !important;
+    height: 100dvh !important;  /* dynamic viewport height for mobile browsers */
+    max-width: 100% !important;
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+}
+
+/* Header: fixed at top */
+.modal.receipt-modal-wrapper .modal-header {
+    flex-shrink: 0 !important;
+    padding: 10px 14px !important;
+    background: white !important;
+    border-bottom: 1px solid var(--gray-200) !important;
+    margin: 0 !important;
+}
+
+/* Content: scrolls */
+.modal.receipt-modal-wrapper .receipt-content {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px !important;
+    min-height: 0 !important;
+}
+
+/* Actions: fixed at bottom, always visible */
+.modal.receipt-modal-wrapper .modal-actions {
+    flex-shrink: 0 !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    padding: 10px 14px !important;
+    background: white !important;
+    border-top: 1px solid var(--gray-200) !important;
+    box-shadow: 0 -2px 8px rgba(0,0,0,0.06) !important;
+    margin: 0 !important;
+    gap: 8px !important;
+    z-index: 10 !important;
+}
+
+@media (max-width: 768px) {
+    .modal.receipt-modal-wrapper .modal-actions {
+        flex-direction: row !important;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+    .modal.receipt-modal-wrapper .modal-actions button {
+        flex: 1 !important;
+        height: 44px !important;
+        justify-content: center !important;
+        font-size: 0.85rem !important;
+    }
+}

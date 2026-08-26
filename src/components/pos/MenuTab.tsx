@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { usePosStore } from "@/stores/pos-store";
 import { deleteProduct, loadData } from "@/lib/repositories";
 import { openProductModal } from "@/components/pos/modals/ProductModal";
@@ -12,6 +12,18 @@ export function MenuTab() {
   const products = usePosStore((s) => s.products);
   const setProducts = usePosStore((s) => s.setProducts);
   const setCategories = usePosStore((s) => s.setCategories);
+
+  // Track which categories are collapsed (hidden). Default: all expanded.
+  const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+
+  const toggleCategory = (id: number) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const orphaned = useMemo(
     () =>
@@ -46,8 +58,14 @@ export function MenuTab() {
       <div className="menu-grid" id="menuGrid">
         {categories.map((category) => {
           const catProducts = products.filter((p) => String(p.categoryId) === String(category.id));
+          const isCollapsed = collapsed.has(category.id);
           return (
-            <div key={category.id} className="menu-category-section" style={{ marginBottom: "20px" }}>
+            <div
+              key={category.id}
+              className={`menu-category-section ${isCollapsed ? "collapsed" : ""}`}
+              style={{ marginBottom: "20px" }}
+            >
+              {/* Clickable header — toggles show/hide */}
               <div
                 className="menu-category-header"
                 style={{
@@ -57,11 +75,18 @@ export function MenuTab() {
                   borderRadius: "8px",
                   marginBottom: "15px",
                 }}
+                onClick={() => toggleCategory(category.id)}
               >
-                <h3 style={{ margin: 0, color: "#333", display: "flex", alignItems: "center" }}>
+                <h3 style={{ margin: 0, color: "#333", display: "flex", alignItems: "center", flex: 1 }}>
                   <span style={{ marginRight: "10px" }}>{category.emoji}</span>
                   {category.name}
+                  <span style={{ marginLeft: "8px", fontSize: "0.8rem", color: "#9CA3AF", fontWeight: 500 }}>
+                    ({catProducts.length})
+                  </span>
                 </h3>
+                <span className="menu-category-toggle" title={isCollapsed ? "Expand" : "Collapse"}>
+                  <i className="fas fa-chevron-down"></i>
+                </span>
               </div>
               <div
                 className="menu-category-items"
