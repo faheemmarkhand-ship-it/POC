@@ -5543,3 +5543,53 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
         font-size: 0.85rem !important;
     }
 }
+
+/* ===================================================================
+   RECEIPT MODAL — FINAL FIX: override min-height, true flex layout
+   Buttons always pinned to bottom, content scrolls, no slide-up needed.
+   =================================================================== */
+@media (max-width: 768px) {
+    /* Override the generic min-height: 100vh that pushes buttons off-screen */
+    .modal.receipt-modal-wrapper .modal-content {
+        min-height: 0 !important;
+        max-height: 100vh !important;
+        height: 100dvh !important;
+        padding: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+
+    /* Receipt content: the ONLY scrollable area */
+    .modal.receipt-modal-wrapper .receipt-content {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch;
+        padding: 12px !important;
+    }
+
+    /* Actions: pinned to bottom, NEVER scroll */
+    .modal.receipt-modal-wrapper .modal-actions,
+    .modal.receipt-modal-wrapper .receipt-modal-actions {
+        flex: 0 0 auto !important;
+        position: sticky !important;
+        bottom: 0 !important;
+        max-height: none !important;
+        margin: 0 !important;
+        padding: 10px 14px !important;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+        background: white !important;
+        border-top: 1px solid var(--gray-200) !important;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.08) !important;
+        flex-direction: row !important;
+        z-index: 50 !important;
+    }
+
+    .modal.receipt-modal-wrapper .modal-actions button {
+        flex: 1 !important;
+        height: 44px !important;
+        justify-content: center !important;
+        font-size: 0.85rem !important;
+    }
+}

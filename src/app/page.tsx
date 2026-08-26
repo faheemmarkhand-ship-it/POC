@@ -25,24 +25,28 @@ export default function Home() {
   const dataLoaded = usePosStore((s) => s.dataLoaded);
   const mainRef = useRef<HTMLElement>(null);
 
-  // Swipe left/right to change tabs (mobile)
+  // Swipe left/right to change tabs (mobile) — works on ALL pages
   useEffect(() => {
     const el = mainRef.current;
     if (!el) return;
     let startX = 0;
     let startY = 0;
     let isSwiping = false;
+    let tracking = false;
 
     const onStart = (e: TouchEvent) => {
-      // Don't interfere with modals or scrollable elements
+      // Only exclude truly interactive elements (inputs, modals, cart sidebar)
+      // Allow swiping on product cards, menu items, table rows, etc.
       const target = e.target as HTMLElement;
-      if (target.closest(".modal, .cart-sidebar, .product-card, .sales-table-container, .menu-card, input, select, textarea, button")) return;
+      if (target.closest(".modal, .cart-sidebar, input, select, textarea")) return;
+      tracking = true;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
       isSwiping = false;
     };
 
     const onMove = (e: TouchEvent) => {
+      if (!tracking) return;
       const dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
       // Only treat as horizontal swipe if dx > dy (avoid vertical scroll)
@@ -52,7 +56,11 @@ export default function Home() {
     };
 
     const onEnd = (e: TouchEvent) => {
-      if (!isSwiping) return;
+      if (!tracking || !isSwiping) {
+        tracking = false;
+        return;
+      }
+      tracking = false;
       const dx = (e.changedTouches[0].clientX) - startX;
       if (Math.abs(dx) < 80) return; // require a decisive swipe
       const idx = TAB_ORDER.indexOf(activeTab);
