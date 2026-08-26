@@ -1138,3 +1138,5 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
  GET /api/health 200 in 353ms (compile: 1869µs, render: 351ms)
  GET /api/health 200 in 406ms (compile: 5ms, render: 401ms)
  GET /api/health 200 in 437ms (compile: 4ms, render: 433ms)
+ GET /api/health 200 in 376ms (compile: 3ms, render: 373ms)
+ GET /api/health 200 in 386ms (compile: 5ms, render: 381ms)
