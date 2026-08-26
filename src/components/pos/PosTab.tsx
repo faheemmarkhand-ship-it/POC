@@ -142,19 +142,6 @@ export function PosTab() {
       <div className="products-section">
         <div className="products-header">
           <h2>Menu Items</h2>
-          <div className="search-filter">
-            <div className="search-input-wrapper">
-              <i className="fas fa-search search-icon"></i>
-              <input
-                type="text"
-                id="search-input"
-                className="search-input"
-                placeholder="Search products..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
         </div>
 
         {/* Manual KG Entry Section */}
@@ -211,26 +198,6 @@ export function PosTab() {
               Add
             </button>
           </div>
-        </div>
-
-        {/* Category Pills */}
-        <div className="categories-container" id="categoriesContainer" style={{ display: "flex", flexWrap: "wrap", gap: "8px", margin: "12px 0" }}>
-          <button
-            className={`category-pill ${activeCategory === "all" ? "active" : ""}`}
-            onClick={() => setActiveCategory("all")}
-          >
-            All Items
-          </button>
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              className={`category-pill ${activeCategory === c.id ? "active" : ""}`}
-              style={{ borderColor: c.color }}
-              onClick={() => setActiveCategory(c.id)}
-            >
-              {c.emoji} {c.name}
-            </button>
-          ))}
         </div>
 
         {/* Products Grid */}
