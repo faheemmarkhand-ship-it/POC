@@ -455,3 +455,6 @@
  POST /api/sync/push 200 in 8.0s (compile: 3ms, render: 8.0s)
  GET /api/sync/pull?since=1787793388741 200 in 97ms (compile: 1956µs, render: 95ms)
  GET /api/health 200 in 374ms (compile: 2ms, render: 372ms)
+ GET /api/health 200 in 459ms (compile: 1992µs, render: 457ms)
+ GET /api/health 200 in 438ms (compile: 3ms, render: 435ms)
+ GET /api/health 200 in 463ms (compile: 5ms, render: 458ms)
