@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { usePosStore } from "@/stores/pos-store";
-import { deleteProduct, loadData } from "@/lib/repositories";
+import { deleteProduct, loadData, reorderCategories } from "@/lib/repositories";
 import { openProductModal } from "@/components/pos/modals/ProductModal";
 import { showToast } from "@/components/pos/Toast";
 import { confirmDialog } from "@/components/pos/ConfirmModal";
+import type { Category } from "@/types/pos";
 
 export function MenuTab() {
   const categories = usePosStore((s) => s.categories);
@@ -13,8 +14,10 @@ export function MenuTab() {
   const setProducts = usePosStore((s) => s.setProducts);
   const setCategories = usePosStore((s) => s.setCategories);
 
-  // Track which categories are collapsed (hidden). Default: all expanded.
+  // Track which categories are collapsed (items hidden). Default: all expanded.
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  // Track which categories are minimized (compact view, no product cards).
+  const [minimized, setMinimized] = useState<Set<number>>(new Set());
 
   const toggleCategory = (id: number) => {
     setCollapsed((prev) => {
@@ -23,6 +26,37 @@ export function MenuTab() {
       else next.add(id);
       return next;
     });
+  };
+
+  const toggleMinimize = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMinimized((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Drag-and-drop reorder
+  const dragId = useRef<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+
+  const handleDrop = async (targetId: number) => {
+    if (dragId.current == null || dragId.current === targetId) return;
+    const ids = categories.map((c) => c.id);
+    const fromIdx = ids.indexOf(dragId.current);
+    const toIdx = ids.indexOf(targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const reordered = [...categories];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const idOrderMap: Record<string, number> = {};
+    reordered.forEach((c, i) => (idOrderMap[String(c.id)] = i));
+    dragId.current = null;
+    setDragOverId(null);
+    await reorderCategories(idOrderMap);
+    showToast("Category order saved", "success");
   };
 
   const orphaned = useMemo(
@@ -56,16 +90,38 @@ export function MenuTab() {
         </button>
       </div>
       <div className="menu-grid" id="menuGrid">
-        {categories.map((category) => {
+        {categories.map((category: Category) => {
           const catProducts = products.filter((p) => String(p.categoryId) === String(category.id));
           const isCollapsed = collapsed.has(category.id);
+          const isMinimized = minimized.has(category.id);
           return (
             <div
               key={category.id}
-              className={`menu-category-section ${isCollapsed ? "collapsed" : ""}`}
+              className={`menu-category-section ${isCollapsed ? "collapsed" : ""} ${dragOverId === category.id ? "drag-over" : ""}`}
               style={{ marginBottom: "20px" }}
+              draggable
+              onDragStart={(e) => {
+                dragId.current = category.id;
+                e.currentTarget.classList.add("dragging");
+                e.dataTransfer.effectAllowed = "move";
+              }}
+              onDragEnd={(e) => {
+                e.currentTarget.classList.remove("dragging");
+                setDragOverId(null);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (dragId.current !== null && dragId.current !== category.id) {
+                  setDragOverId(category.id);
+                }
+              }}
+              onDragLeave={() => setDragOverId(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                handleDrop(category.id);
+              }}
             >
-              {/* Clickable header — toggles show/hide */}
+              {/* Category header — toggle + minimize + drag handle */}
               <div
                 className="menu-category-header"
                 style={{
@@ -73,101 +129,122 @@ export function MenuTab() {
                   borderLeftColor: category.color,
                   padding: "10px 15px",
                   borderRadius: "8px",
-                  marginBottom: "15px",
+                  marginBottom: isMinimized ? "0" : "15px",
                 }}
                 onClick={() => toggleCategory(category.id)}
               >
-                <h3 style={{ margin: 0, color: "#333", display: "flex", alignItems: "center", flex: 1 }}>
+                <h3 style={{ margin: 0, color: "#333", display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
                   <span style={{ marginRight: "10px" }}>{category.emoji}</span>
-                  {category.name}
-                  <span style={{ marginLeft: "8px", fontSize: "0.8rem", color: "#9CA3AF", fontWeight: 500 }}>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{category.name}</span>
+                  <span style={{ marginLeft: "8px", fontSize: "0.8rem", color: "#9CA3AF", fontWeight: 500, flexShrink: 0 }}>
                     ({catProducts.length})
                   </span>
                 </h3>
-                <span className="menu-category-toggle" title={isCollapsed ? "Expand" : "Collapse"}>
-                  <i className="fas fa-chevron-down"></i>
-                </span>
+                <div className="header-actions">
+                  {/* Minimize button */}
+                  <button
+                    className="menu-minimize-btn"
+                    onClick={(e) => toggleMinimize(category.id, e)}
+                    title={isMinimized ? "Expand to show products" : "Minimize (hide product cards)"}
+                  >
+                    <i className={`fas ${isMinimized ? "fa-expand" : "fa-minus"}`}></i>
+                  </button>
+                  {/* Toggle (collapse) chevron */}
+                  <span className="menu-category-toggle" title={isCollapsed ? "Expand" : "Collapse"}>
+                    <i className="fas fa-chevron-down"></i>
+                  </span>
+                  {/* Drag handle */}
+                  <span
+                    className="menu-drag-handle"
+                    title="Drag to reorder"
+                  >
+                    <i className="fas fa-grip-vertical"></i>
+                  </span>
+                </div>
               </div>
-              <div
-                className="menu-category-items"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-                  gap: "15px",
-                }}
-              >
-                {catProducts.length === 0 ? (
-                  <div style={{ color: "#999", fontStyle: "italic" }}>
-                    No items in this category
-                  </div>
-                ) : (
-                  catProducts.map((p) => (
-                    <div
-                      key={p.id}
-                      className="product-card menu-card"
-                      style={{
-                        backgroundColor: `${category.color}10`,
-                        border: `3px solid ${category.color}`,
-                        padding: "16px",
-                        display: "flex",
-                        flexDirection: "column",
-                        minHeight: "160px",
-                        aspectRatio: "auto",
-                        overflow: "visible",
-                      }}
-                    >
-                      <div style={{ flexGrow: 1 }}>
-                        <h4
-                          style={{
-                            margin: "0 0 8px 0",
-                            fontSize: "1.1rem",
-                            color: "#1f2937",
-                            fontWeight: 700,
-                            lineHeight: 1.2,
-                          }}
-                        >
-                          {p.name}
-                        </h4>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                          <span
-                            style={{ fontWeight: 800, color: category.color, fontSize: "1.2rem" }}
-                          >
-                            Rs. {p.price}
-                          </span>
-                          <span
-                            style={{ fontSize: "1.15rem", color: "#1f2937", fontWeight: 800 }}
-                          >
-                            Qty: {p.quantityType || "pcs"}
-                          </span>
-                        </div>
-                      </div>
+              {/* Product grid — hidden when collapsed OR minimized */}
+              {!isCollapsed && !isMinimized && (
+                <div
+                  className="menu-category-items"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                    gap: "15px",
+                  }}
+                >
+                  {catProducts.length === 0 ? (
+                    <div style={{ color: "#999", fontStyle: "italic" }}>
+                      No items in this category
+                    </div>
+                  ) : (
+                    catProducts.map((p) => (
                       <div
+                        key={p.id}
+                        className="product-card menu-card"
                         style={{
-                          marginTop: "12px",
+                          backgroundColor: `${category.color}10`,
+                          border: `3px solid ${category.color}`,
+                          padding: "16px",
                           display: "flex",
-                          gap: "6px",
-                          justifyContent: "flex-end",
-                          borderTop: `1px solid ${category.color}20`,
-                          paddingTop: "10px",
+                          flexDirection: "column",
+                          minHeight: "160px",
+                          aspectRatio: "auto",
+                          overflow: "visible",
                         }}
                       >
-                        <button
-                          className="btn-secondary btn-small"
-                          onClick={() => openProductModal(p.id)}
+                        <div style={{ flexGrow: 1 }}>
+                          <h4
+                            style={{
+                              margin: "0 0 8px 0",
+                              fontSize: "1.1rem",
+                              color: "#1f2937",
+                              fontWeight: 700,
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {p.name}
+                          </h4>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                            <span
+                              style={{ fontWeight: 800, color: category.color, fontSize: "1.2rem" }}
+                            >
+                              Rs. {p.price}
+                            </span>
+                            <span
+                              style={{ fontSize: "1.15rem", color: "#1f2937", fontWeight: 800 }}
+                            >
+                              Qty: {p.quantityType || "pcs"}
+                            </span>
+                          </div>
+                        </div>
+                        <div
+                          style={{
+                            marginTop: "12px",
+                            display: "flex",
+                            gap: "6px",
+                            justifyContent: "flex-end",
+                            borderTop: `1px solid ${category.color}20`,
+                            paddingTop: "10px",
+                          }}
                         >
-                          <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                          className="btn-danger btn-small"
-                          onClick={() => handleDelete(p.id)}
-                        >
-                          <i className="fas fa-trash"></i>
-                        </button>
+                          <button
+                            className="btn-secondary btn-small"
+                            onClick={() => openProductModal(p.id)}
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            className="btn-danger btn-small"
+                            onClick={() => handleDelete(p.id)}
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

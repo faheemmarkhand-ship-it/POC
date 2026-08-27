@@ -5593,3 +5593,118 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
         font-size: 0.85rem !important;
     }
 }
+
+/* ===================================================================
+   FIX 1: Welcome screen — no slide-up drag, clean fade-in
+   =================================================================== */
+.db-setup-content {
+    animation: fadeIn 0.3s ease !important;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+/* Override the modalSlideUp animation for the welcome modal */
+.db-setup-modal .modal-content {
+    animation: fadeIn 0.3s ease !important;
+}
+
+/* ===================================================================
+   FIX 2: Menu cart items — minimize + drag-and-drop reorder
+   =================================================================== */
+.menu-category-section {
+    position: relative;
+}
+
+/* Minimize button on category header (next to toggle chevron) */
+.menu-minimize-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(0,0,0,0.06);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-600);
+    font-size: 0.75rem;
+    transition: background 0.15s ease;
+    margin-right: 4px;
+}
+.menu-minimize-btn:hover {
+    background: rgba(0,0,0,0.12);
+    color: var(--primary-red);
+}
+
+/* Drag handle on category header */
+.menu-drag-handle {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-400);
+    font-size: 0.9rem;
+    margin-left: 4px;
+    touch-action: none;
+}
+.menu-drag-handle:active {
+    cursor: grabbing;
+    color: var(--primary-red);
+}
+
+/* Dragging state */
+.menu-category-section.dragging {
+    opacity: 0.5;
+    border: 2px dashed var(--primary-red) !important;
+    border-radius: 8px;
+}
+.menu-category-section.drag-over {
+    border-top: 3px solid var(--primary-red) !important;
+}
+
+/* Header layout: name + count | buttons (minimize, toggle, drag) */
+.menu-category-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.menu-category-header .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+/* ===================================================================
+   FIX 3: Custom item dropdown — proper arrow icon spacing
+   =================================================================== */
+.manual-kg-form .custom-dropdown {
+    position: relative;
+}
+.manual-kg-form .dropdown-selected {
+    padding-right: 36px !important;
+    position: relative;
+}
+.manual-kg-form .dropdown-selected::after {
+    content: '\f078';  /* fa-chevron-down */
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--gray-500);
+    font-size: 0.75rem;
+    pointer-events: none;
+    transition: transform 0.2s ease;
+}
+.manual-kg-form .custom-dropdown.active .dropdown-selected::after {
+    transform: translateY(-50%) rotate(180deg);
+    color: var(--primary-red);
+}
