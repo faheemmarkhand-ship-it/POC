@@ -41,7 +41,7 @@ export function ReceiptModal() {
       ? ""
       : `
         <div class="receipt-header">
-          <img src="/LOGO.jpg" alt="Logo" class="receipt-logo" onError="this.onerror=null;this.src='/R-LOGO.png';">
+          <img src="/logo-bw.png" alt="Logo" class="receipt-logo" onError="this.onerror=null;this.src='/r-logo-bw.png';">
           <div class="receipt-store-name">${storeInfo.name || "Naseeb Biryani and Pakwan Center"}</div>
           <div class="receipt-store-info">${storeInfo.address || ""}</div>
           ${storeInfo.phone ? `<div class="receipt-store-info">Mobile: ${storeInfo.phone}</div>` : ""}
@@ -62,6 +62,8 @@ export function ReceiptModal() {
     const d = new Date(order.timestamp);
     return `
       <div class="receipt-container">
+        <!-- Watermark: actual img element so it PRINTS (CSS pseudo-elements don't print) -->
+        <img src="/logo-bw.png" alt="" class="receipt-watermark" onError="this.style.display='none'">
         <div class="receipt-copy">
           <div class="copy-label-box">=== ${copyType} ===</div>
           ${headerHTML}
