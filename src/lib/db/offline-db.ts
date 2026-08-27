@@ -479,8 +479,10 @@ export async function updateStoreInfo(info: Record<string, string>): Promise<voi
     "INSERT OR REPLACE INTO store_info (key, value, updated_at, sync_version) VALUES (?, ?, ?, sync_version + 1)"
   );
   for (const [k, v] of Object.entries(info)) {
-    stmt.run([k, JSON.stringify(v), t]);
-    await enqueueSync("store_info", k, "update", { key: k, value: v });
+    const jsonValue = JSON.stringify(v);
+    stmt.run([k, jsonValue, t]);
+    // Send the JSON-encoded value + updated_at so the server can upsert correctly
+    await enqueueSync("store_info", k, "update", { key: k, value: jsonValue, updated_at: t });
   }
   stmt.free();
   await persistToDisk();

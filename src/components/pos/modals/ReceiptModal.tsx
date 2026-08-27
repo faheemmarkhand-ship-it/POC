@@ -41,7 +41,7 @@ export function ReceiptModal() {
       ? ""
       : `
         <div class="receipt-header">
-          <img src="/R-LOGO.png" alt="Logo" class="receipt-logo" onError="this.style.display='none'">
+          <img src="/LOGO.jpg" alt="Logo" class="receipt-logo" onError="this.onerror=null;this.src='/R-LOGO.png';">
           <div class="receipt-store-name">${storeInfo.name || "Naseeb Biryani and Pakwan Center"}</div>
           <div class="receipt-store-info">${storeInfo.address || ""}</div>
           ${storeInfo.phone ? `<div class="receipt-store-info">Mobile: ${storeInfo.phone}</div>` : ""}
