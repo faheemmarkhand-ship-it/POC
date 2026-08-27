@@ -124,19 +124,19 @@ export function PosTab() {
   // Drag-and-drop reorder
   const handleDrop = async (targetId: number) => {
     if (dragId.current == null || dragId.current === targetId) return;
-    const ids = categories.map((c) => c.id);
-    const fromIdx = ids.indexOf(dragId.current);
-    const toIdx = ids.indexOf(targetId);
-    if (fromIdx === -1 || toIdx === -1) return;
+    // SWAP positions: the dragged category and the target category exchange places
     const reordered = [...categories];
-    const [moved] = reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, moved);
+    const fromIdx = reordered.findIndex((c) => c.id === dragId.current);
+    const toIdx = reordered.findIndex((c) => c.id === targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    // Swap the two elements
+    [reordered[fromIdx], reordered[toIdx]] = [reordered[toIdx], reordered[fromIdx]];
     const idOrderMap: Record<string, number> = {};
     reordered.forEach((c, i) => (idOrderMap[String(c.id)] = i));
     dragId.current = null;
     setDragOverId(null);
     await reorderCategories(idOrderMap);
-    showToast("Category order saved", "success");
+    showToast("Categories swapped", "success");
   };
 
   return (
