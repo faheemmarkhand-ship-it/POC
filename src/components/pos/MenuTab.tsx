@@ -51,6 +51,11 @@ export function MenuTab() {
     if (fromIdx === -1 || toIdx === -1) return;
     // Swap the two elements
     [reordered[fromIdx], reordered[toIdx]] = [reordered[toIdx], reordered[fromIdx]];
+    // Update positions on the swapped items
+    reordered.forEach((c, i) => { c.position = i; });
+    // Immediately update the local store so the UI re-renders with new order
+    usePosStore.getState().setCategories([...reordered]);
+    // Persist to DB + sync
     const idOrderMap: Record<string, number> = {};
     reordered.forEach((c, i) => (idOrderMap[String(c.id)] = i));
     dragId.current = null;
