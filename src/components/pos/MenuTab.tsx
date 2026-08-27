@@ -141,22 +141,27 @@ export function MenuTab() {
                   </span>
                 </h3>
                 <div className="header-actions">
-                  {/* Minimize button */}
+                  {/* Minimize button — stops propagation so it doesn't toggle collapse */}
                   <button
                     className="menu-minimize-btn"
-                    onClick={(e) => toggleMinimize(category.id, e)}
+                    onClick={(e) => { e.stopPropagation(); toggleMinimize(category.id, e); }}
                     title={isMinimized ? "Expand to show products" : "Minimize (hide product cards)"}
                   >
                     <i className={`fas ${isMinimized ? "fa-expand" : "fa-minus"}`}></i>
                   </button>
-                  {/* Toggle (collapse) chevron */}
-                  <span className="menu-category-toggle" title={isCollapsed ? "Expand" : "Collapse"}>
+                  {/* Toggle (collapse) chevron — stops propagation, uses its own click */}
+                  <span
+                    className="menu-category-toggle"
+                    title={isCollapsed ? "Expand" : "Collapse"}
+                    onClick={(e) => { e.stopPropagation(); toggleCategory(category.id); }}
+                  >
                     <i className="fas fa-chevron-down"></i>
                   </span>
                   {/* Drag handle */}
                   <span
                     className="menu-drag-handle"
                     title="Drag to reorder"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <i className="fas fa-grip-vertical"></i>
                   </span>

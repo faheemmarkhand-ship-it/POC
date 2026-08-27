@@ -38,6 +38,17 @@ export function PosTab() {
   // Drag-and-drop state for category reordering
   const dragId = useRef<number | null>(null);
   const [dragOverId, setDragOverId] = useState<number | null>(null);
+  // Minimize state: when a category is minimized, its product cards are hidden
+  // but the header remains visible (so you can drag to reorder).
+  const [minimizedCats, setMinimizedCats] = useState<Set<number>>(new Set());
+  const toggleMinimize = (id: number) => {
+    setMinimizedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   // Filtered + sorted products
   const filteredProducts = useMemo(() => {
@@ -236,8 +247,20 @@ export function PosTab() {
                     <span className="category-emoji">{category.emoji}</span>
                     <span>{category.name}</span>
                   </h3>
-                  <i className="fas fa-grip-lines drag-handle"></i>
+                  <div className="header-actions">
+                    <button
+                      className="pos-minimize-btn"
+                      onClick={(e) => { e.stopPropagation(); toggleMinimize(category.id); }}
+                      title={minimizedCats.has(category.id) ? "Expand products" : "Minimize (hide products)"}
+                    >
+                      <i className={`fas ${minimizedCats.has(category.id) ? "fa-expand" : "fa-minus"}`}></i>
+                    </button>
+                    <span className="pos-drag-handle" title="Drag to reorder">
+                      <i className="fas fa-grip-vertical"></i>
+                    </span>
+                  </div>
                 </div>
+                {!minimizedCats.has(category.id) && (
                 <div className="category-products-grid">
                   {catProducts.map((p) => {
                     const qType = (p.quantityType || "").toLowerCase();
@@ -272,6 +295,7 @@ export function PosTab() {
                     );
                   })}
                 </div>
+                )}
               </div>
             );
           })}
