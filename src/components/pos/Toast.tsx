@@ -10,10 +10,13 @@ interface ToastItem {
   type: ToastType;
 }
 
-let pushExternal: ((message: string, type?: ToastType) => void) | null = null;
+// Global toast event system — survives Fast Refresh
+const TOAST_EVENT = "pos-show-toast";
 
 export function showToast(message: string, type: ToastType = "success") {
-  if (pushExternal) pushExternal(message, type);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(TOAST_EVENT, { detail: { message, type } }));
+  }
 }
 
 export function ToastContainer() {
@@ -28,10 +31,14 @@ export function ToastContainer() {
   }, []);
 
   useEffect(() => {
-    pushExternal = push;
-    return () => {
-      pushExternal = null;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.message) {
+        push(detail.message, detail.type || "success");
+      }
     };
+    window.addEventListener(TOAST_EVENT, handler);
+    return () => window.removeEventListener(TOAST_EVENT, handler);
   }, [push]);
 
   return (

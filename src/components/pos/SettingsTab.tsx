@@ -69,17 +69,33 @@ export function SettingsTab() {
   }, []);
 
   const handleSaveStore = async () => {
-    await updateStoreInfo({ name, address, phone, email });
-    const data = await loadData();
-    setStore(data.store);
-    showToast("Store Info Saved", "success");
+    console.log("[settings] Save Changes clicked");
+    try {
+      showToast("Saving...", "info");
+      await updateStoreInfo({ name, address, phone, email });
+      const data = await loadData();
+      setStore(data.store);
+      showToast("Store Info Saved", "success");
+      console.log("[settings] Store info saved successfully");
+    } catch (e: any) {
+      console.error("[settings] Save store info failed:", e);
+      showToast("Failed to save: " + e.message, "error");
+    }
   };
 
   const handleSaveReceipt = async () => {
-    await updateStoreInfo({ receiptHeader, receiptFooter });
-    const data = await loadData();
-    setStore(data.store);
-    showToast("Receipt Settings Saved", "success");
+    console.log("[settings] Save Receipt Settings clicked");
+    try {
+      showToast("Saving...", "info");
+      await updateStoreInfo({ receiptHeader, receiptFooter });
+      const data = await loadData();
+      setStore(data.store);
+      showToast("Receipt Settings Saved", "success");
+      console.log("[settings] Receipt settings saved successfully");
+    } catch (e: any) {
+      console.error("[settings] Save receipt settings failed:", e);
+      showToast("Failed to save: " + e.message, "error");
+    }
   };
 
   const handleAddCategory = async () => {

@@ -141,16 +141,19 @@ export async function initOfflineDb(): Promise<boolean> {
 }
 
 function ensureSchema() {
-  // Add sync columns to existing tables if upgrading from the original schema
+  // Create tables if missing (with sync columns)
   db.run(SCHEMA_SQL);
   // Light migrations: add missing columns defensively
   const ensureCol = (table: string, col: string, def: string) => {
     try {
       const res = db.exec(`PRAGMA table_info(${table})`);
       const cols = res.length ? res[0].values.map((r: any[]) => r[1]) : [];
-      if (!cols.includes(col)) db.run(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
-    } catch {
-      /* ignore */
+      if (!cols.includes(col)) {
+        db.run(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+        console.log(`[db] Added column ${col} to ${table}`);
+      }
+    } catch (e) {
+      console.warn(`[db] ensureCol(${table}, ${col}) failed:`, e);
     }
   };
   ensureCol("categories", "position", "INTEGER DEFAULT 0");
@@ -165,6 +168,27 @@ function ensureSchema() {
   ensureCol("orders", "sync_version", "INTEGER DEFAULT 0");
   ensureCol("store_info", "updated_at", "INTEGER DEFAULT 0");
   ensureCol("store_info", "sync_version", "INTEGER DEFAULT 0");
+  ensureCol("store_info", "deleted_at", "INTEGER");
+
+  // Debug: verify store_info columns
+  try {
+    const siRes = db.exec("PRAGMA table_info(store_info)");
+    if (siRes.length) {
+      const siCols = siRes[0].values.map((r: any[]) => r[1]);
+      console.log("[db] store_info columns:", siCols.join(", "));
+    } else {
+      console.log("[db] store_info table NOT FOUND — creating fresh");
+      db.run(`CREATE TABLE IF NOT EXISTS store_info (
+        key TEXT PRIMARY KEY,
+        value TEXT,
+        updated_at INTEGER DEFAULT 0,
+        deleted_at INTEGER,
+        sync_version INTEGER DEFAULT 0
+      )`);
+    }
+  } catch (e) {
+    console.error("[db] store_info schema check failed:", e);
+  }
 }
 
 async function seedFromBundle() {
@@ -475,16 +499,26 @@ export async function clearAllOrders(): Promise<void> {
 
 export async function updateStoreInfo(info: Record<string, string>): Promise<void> {
   const t = now();
-  const stmt = db.prepare(
-    "INSERT OR REPLACE INTO store_info (key, value, updated_at, sync_version) VALUES (?, ?, ?, sync_version + 1)"
-  );
   for (const [k, v] of Object.entries(info)) {
     const jsonValue = JSON.stringify(v);
-    stmt.run([k, jsonValue, t]);
+    // Check if the row exists
+    const existing = db.exec("SELECT sync_version FROM store_info WHERE key = ?", [k]);
+    if (existing.length > 0) {
+      // Update existing row
+      db.run(
+        "UPDATE store_info SET value = ?, updated_at = ?, sync_version = sync_version + 1, deleted_at = NULL WHERE key = ?",
+        [jsonValue, t, k]
+      );
+    } else {
+      // Insert new row
+      db.run(
+        "INSERT INTO store_info (key, value, updated_at, sync_version, deleted_at) VALUES (?, ?, ?, 1, NULL)",
+        [k, jsonValue, t]
+      );
+    }
     // Send the JSON-encoded value + updated_at so the server can upsert correctly
     await enqueueSync("store_info", k, "update", { key: k, value: jsonValue, updated_at: t });
   }
-  stmt.free();
   await persistToDisk();
 }
 
