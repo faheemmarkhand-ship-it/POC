@@ -5708,3 +5708,67 @@ body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Robo
     transform: translateY(-50%) rotate(180deg);
     color: var(--primary-red);
 }
+
+/* ===================================================================
+   FLOATING CART BUTTON — clean, professional mobile design
+   =================================================================== */
+.floating-cart-btn {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 75;
+    background: linear-gradient(135deg, #10B981, #059669);
+    color: white;
+    border: none;
+    border-radius: 30px;
+    padding: 12px 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 90%;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.floating-cart-btn:active {
+    transform: translateX(-50%) scale(0.96);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+/* Cart icon */
+.floating-cart-btn .fas {
+    font-size: 1rem;
+}
+
+/* Item count badge */
+.floating-cart-count {
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+}
+
+/* Amount display — clean, prominent */
+.floating-cart-amount {
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+/* Divider line between count and amount */
+.floating-cart-amount::before {
+    content: '';
+    display: inline-block;
+    width: 1px;
+    height: 14px;
+    background: rgba(255, 255, 255, 0.4);
+    margin-right: 8px;
+    vertical-align: middle;
+}

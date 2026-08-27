@@ -38,7 +38,7 @@ export default function Home() {
       // Only exclude truly interactive elements (inputs, modals, cart sidebar)
       // Allow swiping on product cards, menu items, table rows, etc.
       const target = e.target as HTMLElement;
-      if (target.closest(".modal, .cart-sidebar, input, select, textarea")) return;
+      if (target.closest(".modal, .cart-sidebar, input, select, textarea, .sales-table")) return;
       tracking = true;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;

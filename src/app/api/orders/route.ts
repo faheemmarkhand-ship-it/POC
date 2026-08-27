@@ -68,8 +68,12 @@ export async function POST(req: NextRequest) {
 }
 
 function formatMonth(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  // Format in Asia/Karachi timezone (the restaurant's timezone)
+  const karachiStr = d.toLocaleString("en-CA", { timeZone: "Asia/Karachi", year: "numeric", month: "2-digit" });
+  return karachiStr;  // "YYYY-MM"
 }
 function formatDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  // Format in Asia/Karachi timezone
+  const karachiStr = d.toLocaleString("en-CA", { timeZone: "Asia/Karachi", year: "numeric", month: "2-digit", day: "2-digit" });
+  return karachiStr;  // "YYYY-MM-DD"
 }

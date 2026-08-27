@@ -134,8 +134,8 @@ export function PosTab() {
       {cart.length > 0 && !cartSidebarOpen && (
         <button className="floating-cart-btn" onClick={() => setCartSidebarOpen(true)} aria-label="Open cart">
           <i className="fas fa-shopping-cart"></i>
-          <span>{cart.reduce((s, i) => s + i.quantity, 0)}</span>
-          <span className="floating-cart-badge">Rs. {total}</span>
+          <span className="floating-cart-count">{cart.reduce((s, i) => s + i.quantity, 0)}</span>
+          <span className="floating-cart-amount">Rs. {total}</span>
         </button>
       )}
       {/* Product Selection Area */}

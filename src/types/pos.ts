@@ -183,4 +183,12 @@ export const EMOJI_OPTIONS = [
   "🍛", "🥘", "🥣", "🍖", "🍗", "🍲", "🥗", "🍽️", "🧂", "🥤",
 ];
 
+// Business-day shift: the restaurant operates from 9 AM to 3 AM (late night).
+// Orders placed between midnight and 3 AM belong to the PREVIOUS business day.
+// We subtract 9 hours from the timestamp before date grouping so that:
+//   - 9 AM today  →  midnight today  → business date = today
+//   - 2 AM today  →  5 PM yesterday   → business date = yesterday (previous business day)
+//   - 3 AM today  →  6 PM yesterday   → business date = yesterday (last hour of prev day)
+//   - 4 AM today  →  7 PM yesterday   → business date = yesterday (gap period, still prev day)
+// This matches the original app's 9-hour shift.
 export const BUSINESS_SHIFT_MS = 9 * 60 * 60 * 1000;

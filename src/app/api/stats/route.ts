@@ -21,8 +21,9 @@ export async function GET(req: NextRequest) {
       if (r.deleted_at != null) continue;
       const ts = r.timestamp ?? 0;
       const d = new Date(ts - BUSINESS_SHIFT_MS);
-      const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const dateStr = `${monthStr}-${String(d.getDate()).padStart(2, "0")}`;
+      // Format in Asia/Karachi timezone (the restaurant's timezone)
+      const monthStr = d.toLocaleString("en-CA", { timeZone: "Asia/Karachi", year: "numeric", month: "2-digit" });
+      const dateStr = d.toLocaleString("en-CA", { timeZone: "Asia/Karachi", year: "numeric", month: "2-digit", day: "2-digit" });
       const rStatus = r.status;
       const rTotal = r.total ?? 0;
 
