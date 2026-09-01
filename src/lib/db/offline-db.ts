@@ -196,7 +196,10 @@ async function seedFromBundle() {
     const res = await fetch("/seed-data.json");
     if (!res.ok) return;
     const data = await res.json();
-    const now = Date.now();
+    // Use updated_at = 0 for seed data so that server records (from Supabase)
+    // always appear newer and get pulled during sync. This ensures orders
+    // created on other devices show up on this device after sync.
+    const seedUpdated = 0;
 
     // store_info
     if (data.store_info?.rows) {
@@ -204,7 +207,7 @@ async function seedFromBundle() {
         "INSERT OR REPLACE INTO store_info (key, value, updated_at, sync_version) VALUES (?, ?, ?, 1)"
       );
       for (const r of data.store_info.rows) {
-        stmt.run([r[0], String(r[1]), now]);
+        stmt.run([r[0], String(r[1]), seedUpdated]);
       }
       stmt.free();
     }
@@ -215,7 +218,7 @@ async function seedFromBundle() {
         "INSERT INTO categories (id, name, color, emoji, position, updated_at, sync_version) VALUES (?, ?, ?, ?, ?, ?, 1)"
       );
       for (const r of data.categories.rows) {
-        stmt.run([r[0], r[1], r[2], r[3], r[4] ?? 0, now]);
+        stmt.run([r[0], r[1], r[2], r[3], r[4] ?? 0, seedUpdated]);
       }
       stmt.free();
     }
@@ -226,7 +229,7 @@ async function seedFromBundle() {
         "INSERT INTO products (id, name, category_id, price, quantity_type, is_custom, updated_at, sync_version) VALUES (?, ?, ?, ?, ?, ?, ?, 1)"
       );
       for (const r of data.products.rows) {
-        stmt.run([r[0], r[1], r[2], r[3], r[4], r[5] ?? 0, now]);
+        stmt.run([r[0], r[1], r[2], r[3], r[4], r[5] ?? 0, seedUpdated]);
       }
       stmt.free();
     }
@@ -237,7 +240,7 @@ async function seedFromBundle() {
         "INSERT INTO orders (id, timestamp, total, status, items_json, updated_at, sync_version) VALUES (?, ?, ?, ?, ?, ?, 1)"
       );
       for (const r of data.orders.rows) {
-        stmt.run([r[0], r[1], r[2], r[3], r[4], now]);
+        stmt.run([r[0], r[1], r[2], r[3], r[4], seedUpdated]);
       }
       stmt.free();
     }

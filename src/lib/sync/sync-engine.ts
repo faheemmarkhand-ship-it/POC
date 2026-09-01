@@ -9,7 +9,8 @@
 //     2. GET  /api/sync/pull?since=last_synced  (apply server records into local DB)
 //     3. Clear applied queue items; mark failed ones with attempts++
 
-import { getDb, getSyncQueue, clearSyncQueueItem, markSyncQueueError, clearSyncQueue, applyPulledRecord, persistToDisk } from "@/lib/db/offline-db";
+import { getDb, getSyncQueue, clearSyncQueueItem, markSyncQueueError, clearSyncQueue, applyPulledRecord, persistToDisk, loadAllData } from "@/lib/db/offline-db";
+import { usePosStore } from "@/stores/pos-store";
 import { api } from "@/lib/api-client";
 import type { SyncStatus, SyncPushResult, SyncPullResult, SyncEntityType } from "@/types/pos";
 
@@ -97,14 +98,14 @@ let syncing = false;
 
 export async function runSync(): Promise<void> {
   if (syncing) return;
-  // Try to sync directly — don't block on a separate connectivity check.
-  // The push/pull will fail gracefully if the server is unreachable.
+  console.log("[sync] starting sync...");
   syncing = true;
   setSyncState({ status: "syncing", online: true });
   try {
     await pushPending();
     await pullServerChanges();
     setSyncState({ status: "synced", online: true });
+    console.log("[sync] completed successfully");
   } catch (e) {
     console.error("[sync] failed:", e);
     setSyncState({ status: "sync-error", online: true });
@@ -159,14 +160,14 @@ async function pushPending(): Promise<void> {
 async function pullServerChanges(): Promise<void> {
   const since = getLastSyncedAt();
   const result = await api.get<SyncPullResult>("/api/sync/pull", { since: String(since) });
+  console.log(`[sync] pull: ${result.orders.length} orders, ${result.categories.length} categories, ${result.products.length} products since=${since}`);
 
-  // Apply server records. We only apply if the server record is newer than the local one
-  // (or the local record isn't pending in the queue) to avoid clobbering local edits.
   const db = getDb();
   if (!db) return;
 
+  let applied = 0;
+  let skipped = 0;
   const applyIfNewer = async (entityType: SyncEntityType, record: any) => {
-    // Check local updated_at vs server updated_at
     let localUpdated = 0;
     try {
       const tableMap: Record<SyncEntityType, { table: string; pk: string; col: string }> = {
@@ -180,9 +181,11 @@ async function pullServerChanges(): Promise<void> {
       if (res.length) localUpdated = Number(res[0].values[0][0]) || 0;
     } catch {}
     const serverUpdated = Number(record.updated_at) || 0;
-    // Apply server record if it's newer than local (last-write-wins by updated_at).
     if (serverUpdated >= localUpdated) {
       await applyPulledRecord(entityType, record);
+      applied++;
+    } else {
+      skipped++;
     }
   };
 
@@ -190,9 +193,19 @@ async function pullServerChanges(): Promise<void> {
   for (const r of result.products) await applyIfNewer("products", r);
   for (const r of result.orders) await applyIfNewer("orders", r);
   for (const r of result.store_info) await applyIfNewer("store_info", r);
+  console.log(`[sync] pull applied ${applied} records, skipped ${skipped} (local newer)`);
 
   setLastSyncedAt(result.server_time);
   await persistToDisk();
+
+  // Refresh the Zustand store so the UI re-renders with the newly pulled data.
+  // This is critical for multi-device sync — orders created on another device
+  // need to appear in the Sales tab after sync pull.
+  if (applied > 0) {
+    const freshData = loadAllData();
+    usePosStore.getState().setData(freshData);
+    console.log(`[sync] store refreshed: ${freshData.orders.length} orders, ${freshData.products.length} products`);
+  }
 }
 
 // Clear all conflicts + queue (admin action).
@@ -223,7 +236,7 @@ export function startConnectivityMonitor(): void {
   });
   setInterval(() => {
     refreshConnectivity().then((ok) => {
-      if (ok && getPendingCount() > 0) runSync().catch(() => {});
+      if (ok) runSync().catch(() => {});
     });
   }, 15000);
 }
